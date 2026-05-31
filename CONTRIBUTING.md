@@ -62,7 +62,7 @@ Steps to add a `comic` preset:
 
 ### Adding a new language
 
-The UI strings currently live inline in `Vectorizer.svelte` and
+The UI strings currently live inline in `Studio.svelte` and
 `index.astro`. Before adding new languages we will extract them into a JSON
 dictionary under `src/i18n/` (see Roadmap). Until then:
 
@@ -145,7 +145,7 @@ npm run build     # 本番ビルド (dist/)
 
 ### 新言語の追加
 
-UI 文字列は現在 `Vectorizer.svelte` と `index.astro` に直書きされています。
+UI 文字列は現在 `Studio.svelte` と `index.astro` に直書きされています。
 新言語追加の前に、文字列を `src/i18n/` 配下の JSON 辞書に抽出する予定です
 （Roadmap 参照）。それまでの流れ：
 

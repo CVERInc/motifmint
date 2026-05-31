@@ -1,0 +1,18 @@
+{
+  "name": "markmint — logo & icon studio",
+  "short_name": "markmint",
+  "description": "Turn any image into a clean, recolorable SVG logo or icon — in your browser.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#052829",
+  "theme_color": "#052829",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

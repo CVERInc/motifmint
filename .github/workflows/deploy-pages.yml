@@ -9,6 +9,11 @@ on:
 permissions:
   contents: write
 
+# Run the bundled JS actions on the Node 24 runtime (silences the Node 20
+# deprecation warning; the action versions themselves are unchanged).
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   deploy:
     concurrency: ci-${{ github.ref }}
@@ -20,7 +25,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22' # matches .nvmrc
           cache: 'npm'
 
       - name: Install dependencies

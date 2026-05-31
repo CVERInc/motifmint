@@ -56,7 +56,47 @@
     type GradientSpec,
   } from '~/lib/gradient';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
-  import type { WorkerRequest, WorkerResponse } from '~/lib/vectorize.worker';
+  import Package from '@lucide/svelte/icons/package';
+  import Copy from '@lucide/svelte/icons/copy';
+  import Check from '@lucide/svelte/icons/check';
+  import { zipSync } from 'fflate';
+  import { buildIco } from '~/lib/ico';
+  import {
+    ICON_SPECS,
+    ICO_SIZES,
+    generateWebManifest,
+    generateHtmlSnippet,
+  } from '~/lib/icon-pack';
+  import {
+    toComponentName,
+    toDataUri,
+    toReactComponent,
+    toVueComponent,
+  } from '~/lib/copy-as';
+  import {
+    composeLayers,
+    IDENTITY_TRANSFORM,
+    type ComposeLayer,
+    type LayerTransform,
+  } from '~/lib/compose-layers';
+  import Plus from '@lucide/svelte/icons/plus';
+  import Eye from '@lucide/svelte/icons/eye';
+  import Images from '@lucide/svelte/icons/images';
+  import Undo2 from '@lucide/svelte/icons/undo-2';
+  import Redo2 from '@lucide/svelte/icons/redo-2';
+  import Wand2 from '@lucide/svelte/icons/wand-2';
+  import { History } from '~/lib/history';
+  import { detectBackgroundColor, type PathBox } from '~/lib/background';
+  import { applyEffects, type EffectOptions } from '~/lib/effects';
+  import { imageToAscii } from '~/lib/ascii';
+  import { buildSizeSet, DEFAULT_SCALES } from '~/lib/export-set';
+  import {
+    loadGradientPresets,
+    addGradientPreset,
+    removeGradientPreset,
+    type SavedGradient,
+  } from '~/lib/gradient-presets';
+  import type { WorkerRequest, WorkerResponse } from '~/lib/trace.worker';
   import CompareSlider from './CompareSlider.svelte';
 
   type Status = 'idle' | 'converting' | 'done' | 'error';
@@ -71,8 +111,42 @@
   let livePreview = $state(true);
   let optimize = $state(true);
 
-  let svg = $state<string | null>(null);
-  let outputBytes = $state(0);
+  // The primary image's traced SVG (the one the left panel tunes). The
+  // pipeline consumes `svg`, which is the composition of this base layer plus
+  // any added image layers — see the `svg` derived below.
+  let baseSvg = $state<string | null>(null);
+  let baseTransform = $state<LayerTransform>({ ...IDENTITY_TRANSFORM });
+  let baseHidden = $state(false);
+
+  // Extra image layers, each independently traced and composited into the
+  // single mark. Empty = classic single-image behaviour (byte-identical).
+  interface ImageLayer {
+    id: number;
+    name: string;
+    previewUrl: string;
+    rawSvg: string | null; // null until its trace finishes
+    transform: LayerTransform;
+    hidden: boolean;
+  }
+  let extraLayers = $state<ImageLayer[]>([]);
+  let selectedLayerId = $state<number | 'base'>('base');
+  let nextLayerId = 1;
+
+  // Composed mark fed to the whole edit/export pipeline. A lone, untransformed
+  // base passes through verbatim (composeLayers short-circuits), so adding no
+  // layers changes nothing.
+  const svg = $derived.by<string | null>(() => {
+    if (baseSvg == null) return null;
+    const layers: ComposeLayer[] = [{ svg: baseSvg, transform: baseTransform, hidden: baseHidden }];
+    for (const l of extraLayers) {
+      if (l.rawSvg) layers.push({ svg: l.rawSvg, transform: l.transform, hidden: l.hidden });
+    }
+    return composeLayers(layers);
+  });
+  const hasLayers = $derived(extraLayers.length > 0);
+  // Always reflects the composed output, not just the base trace.
+  const outputBytes = $derived(svg ? new TextEncoder().encode(svg).length : 0);
+
   let durationMs = $state(0);
   let status = $state<Status>('idle');
   let errorMessage = $state<string | null>(null);
@@ -187,16 +261,101 @@
     taggedSvg ? applyPathOverrides(taggedSvg, pathStates, autoHiddenIdxs, specklePreviewing) : null,
   );
   const removedIdxs = $derived(collectRemoved(pathStates));
+
+  // Finishing effects (outline / shadow / glow). Slider values are percentages
+  // of the mark's shorter side; `effectOptions` scales them into user units.
+  let fx = $state({
+    outline: { on: false, width: 3, color: '#ffffff' },
+    shadow: { on: false, blur: 3, dx: 0, dy: 4, color: '#000000', opacity: 0.35 },
+    glow: { on: false, blur: 4, color: '#ffffff', opacity: 0.6 },
+  });
+  const effectOptions = $derived.by<EffectOptions>(() => {
+    const vb = svg ? readViewBox(svg) : null;
+    const base = vb ? Math.min(vb.w, vb.h) : 100;
+    const pct = (n: number) => (n / 100) * base;
+    const o: EffectOptions = {};
+    if (fx.outline.on) o.outline = { width: pct(fx.outline.width), color: fx.outline.color };
+    if (fx.shadow.on)
+      o.shadow = {
+        blur: pct(fx.shadow.blur),
+        dx: pct(fx.shadow.dx),
+        dy: pct(fx.shadow.dy),
+        color: fx.shadow.color,
+        opacity: fx.shadow.opacity,
+      };
+    if (fx.glow.on) o.glow = { blur: pct(fx.glow.blur), color: fx.glow.color, opacity: fx.glow.opacity };
+    return o;
+  });
+
   const displaySvg = $derived.by(() => {
     if (!withOverrides) return null;
     const withGradients =
       colorGradients.size > 0
         ? applyColorGradients(withOverrides, colorGradients, pathList)
         : withOverrides;
-    return removedIdxs.length > 0 ? removePaths(withGradients, removedIdxs) : withGradients;
+    const composed =
+      removedIdxs.length > 0 ? removePaths(withGradients, removedIdxs) : withGradients;
+    return applyEffects(composed, effectOptions);
   });
 
-  // Reset per-path state whenever the source SVG changes (new trace).
+  // ── Undo / redo for shape edits (recolor / hide / erase / gradient) ─────────
+  interface EditSnapshot {
+    pathStates: Map<number, PathState>;
+    colorGradients: Map<string, GradientSpec>;
+  }
+  const editHistory = new History<EditSnapshot>(100);
+  let canUndo = $state(false);
+  let canRedo = $state(false);
+
+  function editSnapshot(): EditSnapshot {
+    return { pathStates: new Map(pathStates), colorGradients: new Map(colorGradients) };
+  }
+  function snapEqual(a: EditSnapshot, b: EditSnapshot): boolean {
+    if (a.pathStates.size !== b.pathStates.size) return false;
+    if (a.colorGradients.size !== b.colorGradients.size) return false;
+    for (const [k, v] of a.pathStates) {
+      const o = b.pathStates.get(k);
+      if (!o || o.fill !== v.fill || o.removed !== v.removed) return false;
+    }
+    for (const [k, v] of a.colorGradients) {
+      if (JSON.stringify(b.colorGradients.get(k)) !== JSON.stringify(v)) return false;
+    }
+    return true;
+  }
+  function syncHistoryFlags() {
+    canUndo = editHistory.canUndo;
+    canRedo = editHistory.canRedo;
+  }
+  function applySnapshot(s: EditSnapshot) {
+    pathStates = new Map(s.pathStates);
+    colorGradients = new Map(s.colorGradients);
+  }
+  function undoEdit() {
+    const s = editHistory.undo();
+    if (s) applySnapshot(s); // cursor now equals s → recorder self-skips
+    syncHistoryFlags();
+  }
+  function redoEdit() {
+    const s = editHistory.redo();
+    if (s) applySnapshot(s);
+    syncHistoryFlags();
+  }
+  function onKeydown(e: KeyboardEvent) {
+    if (!(e.metaKey || e.ctrlKey)) return;
+    const t = e.target as HTMLElement | null;
+    if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+    const key = e.key.toLowerCase();
+    if (key === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) redoEdit();
+      else undoEdit();
+    } else if (key === 'y') {
+      e.preventDefault();
+      redoEdit();
+    }
+  }
+
+  // Reset per-path state whenever the source SVG changes (new trace / recompose).
   let lastSvgRef = $state<string | null>(null);
   $effect(() => {
     if (svg !== lastSvgRef) {
@@ -206,7 +365,23 @@
       expandedGroups = new Set();
       hoveredPathIdx = null;
       speckleThreshold = 0;
+      editHistory.reset({ pathStates: new Map(), colorGradients: new Map() });
+      syncHistoryFlags();
     }
+  });
+
+  // Record an undo step whenever the edit maps drift from the history cursor.
+  // After undo/redo the cursor already holds the restored state, so this
+  // self-skips — no restore flag needed.
+  $effect(() => {
+    pathStates;
+    colorGradients; // track
+    const top = editHistory.current;
+    if (!top) return;
+    const snap = editSnapshot();
+    if (snapEqual(snap, top)) return;
+    editHistory.push(snap);
+    syncHistoryFlags();
   });
 
   // Bidirectional hover sync: highlight the canvas path when hovering a
@@ -227,7 +402,9 @@
 
   let worker: Worker | null = null;
   let pendingId = 0;
-  let lastId = 0;
+  let lastBaseId = 0; // most-recent base-trace request (older ones are stale)
+  // Routes each worker request to its target: the base image or a layer id.
+  const pendingTargets = new Map<number, number | 'base'>();
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   const presetLabel = $derived(PRESETS.find((p) => p.id === preset)?.label ?? '');
@@ -247,17 +424,27 @@
 
   onMount(() => {
     customPresets = loadCustomPresets();
-    worker = new Worker(new URL('../lib/vectorize.worker.ts', import.meta.url), { type: 'module' });
+    savedGradients = loadGradientPresets();
+    worker = new Worker(new URL('../lib/trace.worker.ts', import.meta.url), { type: 'module' });
     worker.onmessage = (e: MessageEvent<WorkerResponse>) => {
-      if (e.data.id !== lastId) return;
-      if (e.data.type === 'done') {
-        svg = e.data.svg;
-        outputBytes = new TextEncoder().encode(e.data.svg).length;
+      const target = pendingTargets.get(e.data.id);
+      if (target === undefined) return; // stale / unknown request
+      pendingTargets.delete(e.data.id);
+
+      if (e.data.type === 'error') {
+        errorMessage = e.data.message;
+        status = 'error';
+        return;
+      }
+      if (target === 'base') {
+        if (e.data.id !== lastBaseId) return; // a newer base trace superseded this
+        baseSvg = e.data.svg;
         durationMs = e.data.durationMs;
         status = 'done';
       } else {
-        errorMessage = e.data.message;
-        status = 'error';
+        const layer = extraLayers.find((l) => l.id === target);
+        if (layer) layer.rawSvg = e.data.svg; // $state is deep-reactive
+        status = 'done';
       }
     };
   });
@@ -266,6 +453,7 @@
     if (debounceTimer) clearTimeout(debounceTimer);
     if (worker) worker.terminate();
     if (previewUrl) URL.revokeObjectURL(previewUrl);
+    for (const l of extraLayers) URL.revokeObjectURL(l.previewUrl);
   });
 
   function selectPreset(id: PresetId) {
@@ -312,6 +500,28 @@
     pathStates = bulkSetRemoved(pathStates, pathList, originalFill, removed);
   }
 
+  // ── One-click background removal ────────────────────────────────────────────
+  const detectedBackground = $derived.by<string | null>(() => {
+    if (!svg || pathBBoxes.size === 0) return null;
+    const vb = readViewBox(svg);
+    if (!vb) return null;
+    const boxes: PathBox[] = [];
+    for (const p of pathList) {
+      const bb = pathBBoxes.get(p.origIdx);
+      if (bb) boxes.push({ fill: p.originalFill, x: bb.x, y: bb.y, w: bb.w, h: bb.h });
+    }
+    return detectBackgroundColor(boxes, vb);
+  });
+  // Hide the button once the detected background's paths are all removed.
+  const backgroundRemoved = $derived.by(() => {
+    if (!detectedBackground) return false;
+    const grp = pathList.filter((p) => p.originalFill === detectedBackground);
+    return grp.length > 0 && grp.every((p) => pathStates.get(p.origIdx)?.removed);
+  });
+  function removeBackground() {
+    if (detectedBackground) bulkRemove(detectedBackground, true);
+  }
+
   // ── Gradient fills (per color group) ──────────────────────────────
   function setColorGradient(key: string, spec: GradientSpec | undefined) {
     const next = new Map(colorGradients);
@@ -342,6 +552,24 @@
     const cur = colorGradients.get(key);
     if (!cur) return;
     setColorGradient(key, { ...cur, angle });
+  }
+  function setGradientType(key: string, type: 'linear' | 'radial') {
+    const cur = colorGradients.get(key);
+    if (!cur) return;
+    setColorGradient(key, { ...cur, type });
+  }
+  // Savable gradient presets (reuse a gradient across colors / sessions).
+  let savedGradients = $state<SavedGradient[]>([]);
+  function saveCurrentGradient(key: string) {
+    const cur = colorGradients.get(key);
+    if (!cur) return;
+    savedGradients = addGradientPreset(`Gradient ${savedGradients.length + 1}`, cur, Date.now());
+  }
+  function applySavedGradient(key: string, sg: SavedGradient) {
+    setColorGradient(key, structuredClone(sg.spec));
+  }
+  function deleteSavedGradient(name: string) {
+    savedGradients = removeGradientPreset(name);
   }
   function applyGradientPreset(key: string, a: string, b: string, angle: number) {
     setColorGradient(key, {
@@ -464,9 +692,14 @@
       return;
     }
     if (previewUrl) URL.revokeObjectURL(previewUrl);
+    // A fresh primary image starts a new composition.
+    clearExtraLayers();
+    baseTransform = { ...IDENTITY_TRANSFORM };
+    baseHidden = false;
+    selectedLayerId = 'base';
     file = f;
     previewUrl = URL.createObjectURL(f);
-    svg = null;
+    baseSvg = null;
     errorMessage = null;
     status = 'idle';
 
@@ -497,14 +730,113 @@
     if (f) pickFile(f);
   }
 
+  // ── Image layers: add / remove / order / position ──────────────────────────
+  function clearExtraLayers() {
+    for (const l of extraLayers) URL.revokeObjectURL(l.previewUrl);
+    extraLayers = [];
+  }
+
+  async function addImageLayer(f: File) {
+    if (!/^image\/(png|jpe?g|webp|bmp)$/i.test(f.type)) {
+      errorMessage = `Unsupported file type: ${f.type || 'unknown'}`;
+      status = 'error';
+      return;
+    }
+    if (!worker) return;
+    const id = nextLayerId++;
+    const layer: ImageLayer = {
+      id,
+      name: f.name,
+      previewUrl: URL.createObjectURL(f),
+      rawSvg: null,
+      transform: { ...IDENTITY_TRANSFORM },
+      hidden: false,
+    };
+    extraLayers = [...extraLayers, layer];
+    selectedLayerId = id;
+    try {
+      const decoded = await decodeImage(f);
+      const reqId = ++pendingId;
+      pendingTargets.set(reqId, id);
+      status = 'converting';
+      const clone = decoded.data.buffer.slice(0);
+      const req: WorkerRequest = {
+        id: reqId,
+        pixels: clone,
+        width: decoded.width,
+        height: decoded.height,
+        params: { ...params }, // traced with the current preset/params
+        optimize,
+      };
+      worker.postMessage(req, [clone]);
+    } catch (err) {
+      errorMessage = err instanceof Error ? err.message : String(err);
+      status = 'error';
+    }
+  }
+
+  function onAddLayerInput(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const f = input.files?.[0];
+    if (f) addImageLayer(f);
+    input.value = ''; // allow re-adding the same file
+  }
+
+  function removeLayer(id: number | 'base') {
+    if (id === 'base') return; // base can't be removed, only replaced
+    const layer = extraLayers.find((l) => l.id === id);
+    if (layer) URL.revokeObjectURL(layer.previewUrl);
+    extraLayers = extraLayers.filter((l) => l.id !== id);
+    if (selectedLayerId === id) selectedLayerId = 'base';
+  }
+
+  function toggleLayerHidden(id: number | 'base') {
+    if (id === 'base') baseHidden = !baseHidden;
+    else {
+      const l = extraLayers.find((x) => x.id === id);
+      if (l) l.hidden = !l.hidden;
+    }
+  }
+
+  function moveLayer(id: number | 'base', dir: -1 | 1) {
+    if (id === 'base') return;
+    const i = extraLayers.findIndex((l) => l.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= extraLayers.length) return;
+    const next = [...extraLayers];
+    [next[i], next[j]] = [next[j], next[i]];
+    extraLayers = next;
+  }
+
+  /** The transform of whichever layer the position panel is editing. */
+  const selectedTransform = $derived.by<LayerTransform>(() => {
+    if (selectedLayerId === 'base') return baseTransform;
+    return extraLayers.find((l) => l.id === selectedLayerId)?.transform ?? baseTransform;
+  });
+  const selectedHidden = $derived(
+    selectedLayerId === 'base'
+      ? baseHidden
+      : (extraLayers.find((l) => l.id === selectedLayerId)?.hidden ?? false),
+  );
+
+  function updateSelectedTransform(patch: Partial<LayerTransform>) {
+    if (selectedLayerId === 'base') {
+      baseTransform = { ...baseTransform, ...patch };
+    } else {
+      const l = extraLayers.find((x) => x.id === selectedLayerId);
+      if (l) l.transform = { ...l.transform, ...patch };
+    }
+  }
+
   function runConvert() {
     if (!pixelsCache || !worker) return;
     errorMessage = null;
     status = 'converting';
-    lastId = ++pendingId;
+    lastBaseId = ++pendingId;
+    pendingTargets.set(lastBaseId, 'base');
     const clone = pixelsCache.buffer.slice(0);
     const req: WorkerRequest = {
-      id: lastId,
+      id: lastBaseId,
       pixels: clone,
       width: pixelsCache.width,
       height: pixelsCache.height,
@@ -527,15 +859,17 @@
     const removed = removedIdxs.length > 0 ? removePaths(gradiented, removedIdxs) : gradiented;
     // Strip the data-orig-idx attrs from the final output (clean SVG)
     const cleaned = removed.replace(/\sdata-orig-idx="\d+"/g, '');
-    return bakeBackdrop(cleaned, backdrop);
+    // Finishing effects wrap the mark; the backdrop is then baked behind it.
+    const styled = applyEffects(cleaned, effectOptions);
+    return bakeBackdrop(styled, backdrop);
   }
 
-  function saveBlob(blob: Blob, ext: string) {
+  function saveBlob(blob: Blob, ext: string, baseName?: string) {
     if (!file) return;
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${stripExtension(file.name)}.${ext}`;
+    a.download = `${baseName ?? stripExtension(file.name)}.${ext}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -557,13 +891,14 @@
   let rasterSize = $state<number>(512); // longest edge in px (0 = source resolution)
   let exporting = $state(false);
 
-  async function rasterize(finalSvg: string, fmt: RasterFmt): Promise<Blob> {
+  async function rasterize(finalSvg: string, fmt: RasterFmt, sizeOverride?: number): Promise<Blob> {
     const vb = readViewBox(finalSvg);
     const ar = vb && vb.h > 0 ? vb.w / vb.h : 1;
     const longest =
-      rasterSize > 0
+      sizeOverride ??
+      (rasterSize > 0
         ? rasterSize
-        : Math.max(pixelsCache?.width ?? 512, pixelsCache?.height ?? 512);
+        : Math.max(pixelsCache?.width ?? 512, pixelsCache?.height ?? 512));
     const w = ar >= 1 ? longest : Math.max(1, Math.round(longest * ar));
     const h = ar >= 1 ? Math.max(1, Math.round(longest / ar)) : longest;
 
@@ -626,14 +961,251 @@
     }
   }
 
+  // Export the same raster at @1x/@2x/@3x, bundled as a zip.
+  async function downloadSizeSet() {
+    if (!svg || !file || exporting) return;
+    const finalSvg = buildFinalSvg();
+    if (!finalSvg) return;
+    const fmt: RasterFmt = downloadFormat === 'svg' ? 'png' : downloadFormat;
+    const ext = fmt === 'jpeg' ? 'jpg' : fmt;
+    const base = rasterSize > 0 ? rasterSize : 512;
+    const name = stripExtension(file.name) || 'icon';
+    exporting = true;
+    try {
+      const files: Record<string, Uint8Array> = {};
+      for (const { size, suffix } of buildSizeSet(base, DEFAULT_SCALES)) {
+        const blob = await rasterize(finalSvg, fmt, size);
+        files[`${name}${suffix}.${ext}`] = new Uint8Array(await blob.arrayBuffer());
+      }
+      const zipped = zipSync(files, { level: 6 });
+      saveBlob(new Blob([zipped], { type: 'application/zip' }), 'zip', `${name}-${ext}-sizes`);
+    } catch (err) {
+      errorMessage = err instanceof Error ? err.message : String(err);
+      status = 'error';
+    } finally {
+      exporting = false;
+    }
+  }
+
+  // ── Icon pack ────────────────────────────────────────────────────────────
+  // Render the composed result to a square PNG of `size`px, with the mark
+  // fit inside a (1 - 2*inset) safe area so platform masks (rounded/circle
+  // crops, maskable PWA icons) never clip it. Returns the PNG file bytes.
+  let packing = $state(false);
+
+  async function rasterizeSquarePng(
+    finalSvg: string,
+    size: number,
+    inset: number,
+  ): Promise<Uint8Array> {
+    const vb = readViewBox(finalSvg);
+    const ar = vb && vb.h > 0 ? vb.w / vb.h : 1;
+    // Content box after the safe-area inset, then fit the mark's aspect inside.
+    const box = Math.max(1, Math.round(size * (1 - 2 * inset)));
+    const drawW = ar >= 1 ? box : Math.max(1, Math.round(box * ar));
+    const drawH = ar >= 1 ? Math.max(1, Math.round(box / ar)) : box;
+
+    const sized = finalSvg.replace(
+      /<svg([^>]*)>/i,
+      (_m, attrs: string) =>
+        `<svg${attrs.replace(/\s(?:width|height)\s*=\s*"[^"]*"/gi, '')} width="${drawW}" height="${drawH}">`,
+    );
+    const url = URL.createObjectURL(new Blob([sized], { type: 'image/svg+xml;charset=utf-8' }));
+    try {
+      const img = new Image();
+      img.decoding = 'async';
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('Could not render SVG'));
+        img.src = url;
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas not available');
+      ctx.drawImage(img, (size - drawW) / 2, (size - drawH) / 2, drawW, drawH);
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Icon render failed'))), 'image/png'),
+      );
+      return new Uint8Array(await blob.arrayBuffer());
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  async function downloadIconPack() {
+    if (!svg || !file || packing) return;
+    const finalSvg = buildFinalSvg();
+    if (!finalSvg) return;
+    packing = true;
+    try {
+      const name = stripExtension(file.name) || 'icon';
+      const files: Record<string, Uint8Array> = {};
+
+      // PNG set (favicons, apple-touch, PWA icons, maskable).
+      for (const spec of ICON_SPECS) {
+        files[spec.file] = await rasterizeSquarePng(finalSvg, spec.size, spec.inset);
+      }
+
+      // Multi-resolution favicon.ico from freshly rendered PNGs.
+      const icoImages = [];
+      for (const size of ICO_SIZES) {
+        icoImages.push({ size, png: await rasterizeSquarePng(finalSvg, size, 0) });
+      }
+      files['favicon.ico'] = buildIco(icoImages);
+
+      // Text artifacts.
+      const enc = new TextEncoder();
+      files['site.webmanifest'] = enc.encode(
+        generateWebManifest({ name, themeColor: backdropVisible(backdrop) ? `#${backdrop.color.replace('#', '')}` : undefined }),
+      );
+      files['README.txt'] = enc.encode(
+        `${name} icon pack — generated by markmint (https://oss.cver.net/markmint/)\n\n` +
+          `Drop these files in your site root and paste this into <head>:\n\n` +
+          generateHtmlSnippet() +
+          `\n`,
+      );
+
+      const zipped = zipSync(files, { level: 6 });
+      saveBlob(new Blob([zipped], { type: 'application/zip' }), 'zip', `${name}-icons`);
+    } catch (err) {
+      errorMessage = err instanceof Error ? err.message : String(err);
+      status = 'error';
+    } finally {
+      packing = false;
+    }
+  }
+
+  // ── Copy as … ─────────────────────────────────────────────────────────────
+  type CopyKind = 'svg' | 'react' | 'vue' | 'datauri' | 'ascii';
+  let copiedKind = $state<CopyKind | null>(null);
+  let copyTimer: ReturnType<typeof setTimeout> | undefined;
+  let asciiCols = $state(100);
+
+  // Rasterize the composed mark and read its pixels back (for ASCII).
+  async function renderImageData(finalSvg: string, longest: number): Promise<ImageData | null> {
+    const vb = readViewBox(finalSvg);
+    const ar = vb && vb.h > 0 ? vb.w / vb.h : 1;
+    const w = ar >= 1 ? longest : Math.max(1, Math.round(longest * ar));
+    const h = ar >= 1 ? Math.max(1, Math.round(longest / ar)) : longest;
+    const sized = finalSvg.replace(
+      /<svg([^>]*)>/i,
+      (_m, a: string) =>
+        `<svg${a.replace(/\s(?:width|height)\s*=\s*"[^"]*"/gi, '')} width="${w}" height="${h}">`,
+    );
+    const url = URL.createObjectURL(new Blob([sized], { type: 'image/svg+xml;charset=utf-8' }));
+    try {
+      const im = new Image();
+      im.decoding = 'async';
+      await new Promise<void>((res, rej) => {
+        im.onload = () => res();
+        im.onerror = () => rej(new Error('Could not render SVG'));
+        im.src = url;
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      ctx.drawImage(im, 0, 0, w, h);
+      return ctx.getImageData(0, 0, w, h);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  /** Build the ASCII rendering of the current mark, or null. */
+  async function buildAsciiText(): Promise<string | null> {
+    const finalSvg = buildFinalSvg();
+    if (!finalSvg) return null;
+    const id = await renderImageData(finalSvg, Math.max(240, asciiCols * 3));
+    if (!id) return null;
+    return imageToAscii(id.data, id.width, id.height, { cols: asciiCols });
+  }
+
+  async function copyAs(kind: CopyKind) {
+    const finalSvg = buildFinalSvg();
+    if (!finalSvg) return;
+    try {
+      let text = finalSvg;
+      if (kind === 'react') text = toReactComponent(finalSvg, toComponentName(file?.name ?? 'Icon'));
+      else if (kind === 'vue') text = toVueComponent(finalSvg);
+      else if (kind === 'datauri') text = toDataUri(finalSvg);
+      else if (kind === 'ascii') text = (await buildAsciiText()) ?? '';
+      await navigator.clipboard.writeText(text);
+      copiedKind = kind;
+      clearTimeout(copyTimer);
+      copyTimer = setTimeout(() => (copiedKind = null), 1500);
+    } catch (err) {
+      errorMessage = err instanceof Error ? err.message : String(err);
+      status = 'error';
+    }
+  }
+
+  async function downloadAscii() {
+    const text = await buildAsciiText();
+    if (text == null || !file) return;
+    saveBlob(new Blob([text], { type: 'text/plain;charset=utf-8' }), 'txt', `${stripExtension(file.name)}-ascii`);
+  }
+
+  // ── Live ASCII preview panel ────────────────────────────────────────────────
+  let asciiOn = $state(false);
+  let asciiArt = $state('');
+  let asciiBusy = $state(false);
+  let asciiSeq = 0;
+
+  // Recompute the preview (debounced) whenever the mark, backdrop or width
+  // changes — but only while the panel is open, to avoid idle rasterizing.
+  $effect(() => {
+    // tracked dependencies (read synchronously)
+    const live = displaySvg;
+    const cols = asciiCols;
+    const bd = `${backdrop.color}${backdrop.alpha}${backdrop.aspect}${backdrop.padding}${backdrop.radius}`;
+    const enabled = asciiOn;
+    void cols;
+    void bd;
+    void live;
+    if (!enabled || !svg) {
+      asciiArt = '';
+      return;
+    }
+    const seq = ++asciiSeq;
+    asciiBusy = true;
+    const timer = setTimeout(async () => {
+      const text = await buildAsciiText();
+      if (seq === asciiSeq) {
+        asciiArt = text ?? '';
+        asciiBusy = false;
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  });
+
+  async function copyAsciiArt() {
+    if (!asciiArt) return;
+    try {
+      await navigator.clipboard.writeText(asciiArt);
+      copiedKind = 'ascii';
+      clearTimeout(copyTimer);
+      copyTimer = setTimeout(() => (copiedKind = null), 1500);
+    } catch (err) {
+      errorMessage = err instanceof Error ? err.message : String(err);
+      status = 'error';
+    }
+  }
+
   function reset() {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     if (debounceTimer) clearTimeout(debounceTimer);
+    clearExtraLayers();
+    baseTransform = { ...IDENTITY_TRANSFORM };
+    baseHidden = false;
+    selectedLayerId = 'base';
     file = null;
     previewUrl = null;
     pixelsCache = null;
-    svg = null;
-    outputBytes = 0;
+    baseSvg = null;
     durationMs = 0;
     errorMessage = null;
     status = 'idle';
@@ -643,7 +1215,9 @@
   }
 </script>
 
-<section class="vectorizer">
+<svelte:window onkeydown={onKeydown} />
+
+<section class="studio">
   {#if !file}
     <label
       class="dropzone"
@@ -810,6 +1384,109 @@
             </div>
           </div>
 
+          <div class="card-row" style="width: 100%;">
+            <span class="card-label">Effects</span>
+          </div>
+          <div class="fx-stack">
+            <div class="fx-group">
+              <label class="fx-toggle">
+                <input type="checkbox" bind:checked={fx.outline.on} />
+                <span>Outline</span>
+              </label>
+              {#if fx.outline.on}
+                <div class="color-pick">
+                  <input type="color" bind:value={fx.outline.color} aria-label="Outline color" />
+                </div>
+                <div class="slider tight">
+                  <div class="slider-head"><label for="fx-ow">Width</label><span class="value">{fx.outline.width}%</span></div>
+                  <input id="fx-ow" type="range" min="0.5" max="8" step="0.5" bind:value={fx.outline.width} />
+                </div>
+              {/if}
+            </div>
+
+            <div class="fx-group">
+              <label class="fx-toggle">
+                <input type="checkbox" bind:checked={fx.shadow.on} />
+                <span>Shadow</span>
+              </label>
+              {#if fx.shadow.on}
+                <div class="color-pick">
+                  <input type="color" bind:value={fx.shadow.color} aria-label="Shadow color" />
+                </div>
+                <div class="slider-grid three">
+                  <div class="slider tight">
+                    <div class="slider-head"><label for="fx-sb">Blur</label><span class="value">{fx.shadow.blur}%</span></div>
+                    <input id="fx-sb" type="range" min="0" max="12" step="0.5" bind:value={fx.shadow.blur} />
+                  </div>
+                  <div class="slider tight">
+                    <div class="slider-head"><label for="fx-sx">X</label><span class="value">{fx.shadow.dx}%</span></div>
+                    <input id="fx-sx" type="range" min="-10" max="10" step="0.5" bind:value={fx.shadow.dx} />
+                  </div>
+                  <div class="slider tight">
+                    <div class="slider-head"><label for="fx-sy">Y</label><span class="value">{fx.shadow.dy}%</span></div>
+                    <input id="fx-sy" type="range" min="-10" max="10" step="0.5" bind:value={fx.shadow.dy} />
+                  </div>
+                </div>
+                <div class="slider tight">
+                  <div class="slider-head"><label for="fx-so">Opacity</label><span class="value">{Math.round(fx.shadow.opacity * 100)}%</span></div>
+                  <input id="fx-so" type="range" min="0" max="1" step="0.05" bind:value={fx.shadow.opacity} />
+                </div>
+              {/if}
+            </div>
+
+            <div class="fx-group">
+              <label class="fx-toggle">
+                <input type="checkbox" bind:checked={fx.glow.on} />
+                <span>Glow</span>
+              </label>
+              {#if fx.glow.on}
+                <div class="color-pick">
+                  <input type="color" bind:value={fx.glow.color} aria-label="Glow color" />
+                </div>
+                <div class="slider-grid">
+                  <div class="slider tight">
+                    <div class="slider-head"><label for="fx-gb">Blur</label><span class="value">{fx.glow.blur}%</span></div>
+                    <input id="fx-gb" type="range" min="0" max="14" step="0.5" bind:value={fx.glow.blur} />
+                  </div>
+                  <div class="slider tight">
+                    <div class="slider-head"><label for="fx-go">Opacity</label><span class="value">{Math.round(fx.glow.opacity * 100)}%</span></div>
+                    <input id="fx-go" type="range" min="0" max="1" step="0.05" bind:value={fx.glow.opacity} />
+                  </div>
+                </div>
+              {/if}
+            </div>
+          </div>
+
+          <div class="card-row" style="width: 100%;">
+            <span class="card-label">ASCII art</span>
+            <label class="fx-toggle" style="margin-left:auto;">
+              <input type="checkbox" bind:checked={asciiOn} />
+              <span>Show</span>
+            </label>
+          </div>
+          {#if asciiOn}
+            <div class="ascii-panel">
+              <div class="slider tight">
+                <div class="slider-head">
+                  <label for="ascii-cols">Width</label>
+                  <span class="value">{asciiCols} cols</span>
+                </div>
+                <input id="ascii-cols" type="range" min="20" max="200" step="2" bind:value={asciiCols} />
+              </div>
+              <pre class="ascii-preview" class:busy={asciiBusy} aria-label="ASCII preview">{asciiArt || '…'}</pre>
+              <div class="ascii-actions">
+                <button type="button" class="tiny-btn" onclick={copyAsciiArt} disabled={!asciiArt}>
+                  <Copy size={12} />
+                  <span>{copiedKind === 'ascii' ? 'Copied ✓' : 'Copy'}</span>
+                </button>
+                <button type="button" class="tiny-btn" onclick={downloadAscii} disabled={!asciiArt}>
+                  <Download size={12} />
+                  <span>.txt</span>
+                </button>
+              </div>
+            </div>
+          {/if}
+
           {#if pathList.length > 0}
             <div class="layers">
               <div class="card-row" style="justify-content: space-between; width: 100%;">
@@ -892,6 +1569,22 @@
                           aria-label="Gradient start color"
                         />
                       </label>
+                      <div class="grad-type" role="group" aria-label="Gradient type">
+                        <button
+                          type="button"
+                          class:on={(grad.type ?? 'linear') === 'linear'}
+                          onclick={() => setGradientType(group.color, 'linear')}
+                          title="Linear gradient"
+                          aria-label="Linear gradient"
+                        >Lin</button>
+                        <button
+                          type="button"
+                          class:on={grad.type === 'radial'}
+                          onclick={() => setGradientType(group.color, 'radial')}
+                          title="Radial gradient"
+                          aria-label="Radial gradient"
+                        >Rad</button>
+                      </div>
                       <input
                         class="grad-angle-range"
                         type="range"
@@ -899,6 +1592,7 @@
                         max="360"
                         step="15"
                         value={grad.angle}
+                        disabled={grad.type === 'radial'}
                         oninput={(e) => setGradientAngle(group.color, +(e.target as HTMLInputElement).value)}
                         aria-label="Gradient angle"
                       />
@@ -921,6 +1615,24 @@
                             aria-label="Apply {gp.name} gradient"
                           ></button>
                         {/each}
+                        {#each savedGradients as sg (sg.name)}
+                          <button
+                            type="button"
+                            class="grad-preset saved"
+                            style:background={`${sg.spec.type === 'radial' ? 'radial-gradient(circle' : `linear-gradient(${sg.spec.angle + 90}deg`}, ${sg.spec.stops.map((s) => `${s.color} ${s.offset}%`).join(', ')})`}
+                            onclick={() => applySavedGradient(group.color, sg)}
+                            oncontextmenu={(e) => { e.preventDefault(); deleteSavedGradient(sg.name); }}
+                            title={`${sg.name} (right-click to delete)`}
+                            aria-label="Apply {sg.name}"
+                          ></button>
+                        {/each}
+                        <button
+                          type="button"
+                          class="grad-save"
+                          onclick={() => saveCurrentGradient(group.color)}
+                          title="Save this gradient"
+                          aria-label="Save this gradient"
+                        >+</button>
                       </div>
                     </div>
                   {/if}
@@ -1147,8 +1859,131 @@
                   {/if}
                   <span>Download</span>
                 </button>
+                <button
+                  class="ghost"
+                  type="button"
+                  onclick={downloadIconPack}
+                  disabled={packing}
+                  title="Download a favicon + app-icon pack (.ico, PNGs, manifest, HTML snippet) as a zip"
+                >
+                  {#if packing}
+                    <Loader2 size={16} class="spin" />
+                  {:else}
+                    <Package size={16} />
+                  {/if}
+                  <span>Icon pack</span>
+                </button>
+                <button
+                  class="ghost"
+                  type="button"
+                  onclick={downloadSizeSet}
+                  disabled={exporting}
+                  title="Export the raster at @1x / @2x / @3x as a zip"
+                >
+                  <Images size={16} />
+                  <span>@1–3×</span>
+                </button>
+                <details class="copy-menu">
+                  <summary class="ghost" title="Copy the result to the clipboard">
+                    {#if copiedKind}
+                      <Check size={16} />
+                    {:else}
+                      <Copy size={16} />
+                    {/if}
+                    <span>Copy</span>
+                  </summary>
+                  <div class="copy-options" role="menu">
+                    <button type="button" role="menuitem" onclick={() => copyAs('svg')}>
+                      SVG{copiedKind === 'svg' ? ' ✓' : ''}
+                    </button>
+                    <button type="button" role="menuitem" onclick={() => copyAs('react')}>
+                      React component{copiedKind === 'react' ? ' ✓' : ''}
+                    </button>
+                    <button type="button" role="menuitem" onclick={() => copyAs('vue')}>
+                      Vue component{copiedKind === 'vue' ? ' ✓' : ''}
+                    </button>
+                    <button type="button" role="menuitem" onclick={() => copyAs('datauri')}>
+                      Data URI{copiedKind === 'datauri' ? ' ✓' : ''}
+                    </button>
+                  </div>
+                </details>
               </div>
             </div>
+
+            <!-- Image layers: compose several traced images into one mark -->
+            <div class="image-layers">
+              <div class="layers-row">
+                <button
+                  type="button"
+                  class="layer-chip"
+                  class:active={selectedLayerId === 'base'}
+                  class:dim={baseHidden}
+                  onclick={() => (selectedLayerId = 'base')}
+                  title="Base image"
+                >
+                  {#if previewUrl}<img src={previewUrl} alt="" />{/if}
+                  <span class="chip-name">Base</span>
+                </button>
+                {#each extraLayers as l, i (l.id)}
+                  <button
+                    type="button"
+                    class="layer-chip"
+                    class:active={selectedLayerId === l.id}
+                    class:dim={l.hidden || !l.rawSvg}
+                    onclick={() => (selectedLayerId = l.id)}
+                    title={l.name}
+                  >
+                    <img src={l.previewUrl} alt="" />
+                    <span class="chip-name">{l.rawSvg ? `#${i + 2}` : '…'}</span>
+                  </button>
+                {/each}
+                <label class="add-layer" title="Add another image as a layer">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/bmp"
+                    onchange={onAddLayerInput}
+                    hidden
+                  />
+                  <Plus size={16} />
+                  <span>Add image</span>
+                </label>
+              </div>
+
+              {#if hasLayers}
+                <div class="layer-controls">
+                  <div class="layer-actions">
+                    <button type="button" class="tiny-btn" onclick={() => toggleLayerHidden(selectedLayerId)}>
+                      {#if selectedHidden}<Eye size={12} /><span>Show</span>{:else}<EyeOff size={12} /><span>Hide</span>{/if}
+                    </button>
+                    {#if selectedLayerId !== 'base'}
+                      <button type="button" class="tiny-btn" onclick={() => moveLayer(selectedLayerId, -1)} title="Send backward">↓</button>
+                      <button type="button" class="tiny-btn" onclick={() => moveLayer(selectedLayerId, 1)} title="Bring forward">↑</button>
+                      <button type="button" class="tiny-btn" onclick={() => removeLayer(selectedLayerId)}>
+                        <Trash2 size={12} /><span>Remove</span>
+                      </button>
+                    {/if}
+                  </div>
+                  <div class="layer-sliders">
+                    <label class="layer-slider">
+                      <span>Scale</span>
+                      <input type="range" min="0.1" max="2" step="0.05" value={selectedTransform.scale}
+                        oninput={(e) => updateSelectedTransform({ scale: +(e.currentTarget as HTMLInputElement).value })} />
+                    </label>
+                    <label class="layer-slider">
+                      <span>X</span>
+                      <input type="range" min="-0.5" max="0.5" step="0.01" value={selectedTransform.dx}
+                        oninput={(e) => updateSelectedTransform({ dx: +(e.currentTarget as HTMLInputElement).value })} />
+                    </label>
+                    <label class="layer-slider">
+                      <span>Y</span>
+                      <input type="range" min="-0.5" max="0.5" step="0.01" value={selectedTransform.dy}
+                        oninput={(e) => updateSelectedTransform({ dy: +(e.currentTarget as HTMLInputElement).value })} />
+                    </label>
+                  </div>
+                </div>
+              {/if}
+            </div>
+
             <div class="editor-toolbar">
               <div class="tool-group">
                 <button
@@ -1171,6 +2006,39 @@
                   <Eraser size={14} />
                   <span>Eraser Tool</span>
                 </button>
+                <div class="tool-divider" aria-hidden="true"></div>
+                <button
+                  type="button"
+                  class="tool-btn icon-only"
+                  onclick={undoEdit}
+                  disabled={!canUndo}
+                  title="Undo (⌘/Ctrl+Z)"
+                  aria-label="Undo"
+                >
+                  <Undo2 size={14} />
+                </button>
+                <button
+                  type="button"
+                  class="tool-btn icon-only"
+                  onclick={redoEdit}
+                  disabled={!canRedo}
+                  title="Redo (⌘/Ctrl+Shift+Z)"
+                  aria-label="Redo"
+                >
+                  <Redo2 size={14} />
+                </button>
+                {#if detectedBackground && !backgroundRemoved}
+                  <div class="tool-divider" aria-hidden="true"></div>
+                  <button
+                    type="button"
+                    class="tool-btn"
+                    onclick={removeBackground}
+                    title={`Remove the detected background (${detectedBackground})`}
+                  >
+                    <Wand2 size={14} />
+                    <span>Remove BG</span>
+                  </button>
+                {/if}
               </div>
 
               <div class="hide-actions">
@@ -1300,7 +2168,7 @@
 </section>
 
 <style>
-  .vectorizer {
+  .studio {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
@@ -1541,6 +2409,31 @@
   .slider-grid.three {
     grid-template-columns: 1fr 1fr 1fr;
   }
+  /* ── Finishing effects ── */
+  .fx-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .fx-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.6rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+  }
+  .fx-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .fx-toggle input {
+    accent-color: var(--accent);
+  }
   @media (max-width: 520px) {
     .slider-grid.three {
       grid-template-columns: 1fr;
@@ -1711,9 +2604,32 @@
     min-width: 50px;
     accent-color: var(--accent);
   }
+  .grad-angle-range:disabled {
+    opacity: 0.35;
+  }
+  .grad-type {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .grad-type button {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.7rem;
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    cursor: pointer;
+  }
+  .grad-type button.on {
+    background: var(--accent-bg);
+    color: var(--text);
+  }
   .grad-presets {
     display: flex;
     gap: 0.3rem;
+    flex-wrap: wrap;
+    align-items: center;
   }
   .grad-preset {
     width: 20px;
@@ -1726,6 +2642,25 @@
   .grad-preset:hover {
     border-color: var(--accent);
     transform: scale(1.08);
+  }
+  .grad-preset.saved {
+    box-shadow: 0 0 0 1px var(--accent-bg);
+  }
+  .grad-save {
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+    border: 1px dashed var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.85rem;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+  }
+  .grad-save:hover {
+    border-color: var(--accent);
+    color: var(--text);
   }
   .layer-meta {
     flex: 1;
@@ -2062,6 +2997,89 @@
     align-items: center;
     gap: 0.5rem;
   }
+  /* Copy-as disclosure menu (native <details>) */
+  .copy-menu {
+    position: relative;
+  }
+  .copy-menu summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    list-style: none;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .copy-menu summary::-webkit-details-marker {
+    display: none;
+  }
+  .copy-menu summary:hover {
+    border-color: var(--accent);
+  }
+  .copy-options {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.35rem);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    min-width: 11rem;
+    padding: 0.3rem;
+    border-radius: 10px;
+    background: #0a3a3b;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  }
+  .copy-options button {
+    text-align: left;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.85rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .copy-options button:hover {
+    background: var(--accent-bg);
+  }
+  /* ── ASCII art panel ── */
+  .ascii-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.6rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+  }
+  .ascii-preview {
+    margin: 0;
+    max-height: 220px;
+    overflow: auto;
+    padding: 0.6rem;
+    border-radius: 6px;
+    background: #041e1f;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    line-height: 1;
+    white-space: pre;
+    transition: opacity 0.15s;
+  }
+  .ascii-preview.busy {
+    opacity: 0.5;
+  }
+  .ascii-actions {
+    display: flex;
+    gap: 0.4rem;
+  }
   .export-select {
     display: inline-flex;
   }
@@ -2203,6 +3221,87 @@
   }
 
   /* ─── Editor Toolbar ─── */
+  /* ── Image layers strip ── */
+  .image-layers {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .layers-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .layer-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.78rem;
+    transition: border-color 0.15s, background 0.15s, opacity 0.15s;
+  }
+  .layer-chip img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .layer-chip.active {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+  }
+  .layer-chip.dim {
+    opacity: 0.45;
+  }
+  .add-layer {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.7rem;
+    border-radius: 8px;
+    border: 1px dashed var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.78rem;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .add-layer:hover {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+  .layer-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    margin-top: 0.55rem;
+  }
+  .layer-actions {
+    display: inline-flex;
+    gap: 0.35rem;
+  }
+  .layer-sliders {
+    display: inline-flex;
+    gap: 0.85rem;
+    flex-wrap: wrap;
+  }
+  .layer-slider {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+  .layer-slider input[type='range'] {
+    width: 92px;
+  }
   .editor-toolbar {
     display: flex;
     align-items: center;
@@ -2218,11 +3317,25 @@
   }
   .tool-group {
     display: flex;
+    align-items: center;
     gap: 2px;
     background: rgba(255, 255, 255, 0.05);
     padding: 2px;
     border-radius: 6px;
     border: 1px solid var(--border);
+  }
+  .tool-divider {
+    width: 1px;
+    align-self: stretch;
+    margin: 2px 4px;
+    background: var(--border);
+  }
+  .tool-btn.icon-only {
+    padding: 0.35rem;
+  }
+  .tool-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
   .tool-btn {
     display: flex;

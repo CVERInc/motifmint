@@ -1,5 +1,5 @@
 // IMPORTANT: this module pulls in the wasm_vtracer wasm. It MUST only be
-// imported from the worker (`vectorize.worker.ts`), never from main-thread
+// imported from the worker (`trace.worker.ts`), never from main-thread
 // code, otherwise the wasm gets duplicated into the page bundle.
 //
 // For main-thread image decoding, see `./decode.ts`.
@@ -16,7 +16,7 @@ function ensureInit(): void {
   }
 }
 
-export function vectorize(
+export function traceImage(
   pixels: Uint8Array,
   width: number,
   height: number,

@@ -24,8 +24,10 @@ export interface GradientStop {
 export interface GradientSpec {
   /** Two or more colour stops. */
   stops: GradientStop[];
-  /** Direction in degrees. 0 = left→right, 90 = top→bottom. */
+  /** Direction in degrees. 0 = left→right, 90 = top→bottom. (linear only) */
   angle: number;
+  /** Gradient geometry. Defaults to linear for back-compat. */
+  type?: 'linear' | 'radial';
 }
 
 /** Deterministic, SVG-safe gradient id from a colour key. */
@@ -95,17 +97,27 @@ export function applyColorGradients(
   });
 
   // 2. Build defs for the gradients that actually got used.
+  const round = (n: number) => Math.round(n * 100) / 100;
   let defs = '<defs>';
   for (const [key, spec] of colorGradients) {
     if (!usedKeys.has(key)) continue;
-    const { x1, y1, x2, y2 } = angleCoords(spec.angle, vb);
     const stops = [...spec.stops]
       .sort((a, b) => a.offset - b.offset)
       .map((s) => `<stop offset="${s.offset}%" stop-color="${s.color}"/>`)
       .join('');
-    defs +=
-      `<linearGradient id="${gradId(key)}" gradientUnits="userSpaceOnUse"` +
-      ` x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}">${stops}</linearGradient>`;
+    if (spec.type === 'radial') {
+      const cx = round(vb.x + vb.w / 2);
+      const cy = round(vb.y + vb.h / 2);
+      const r = round(Math.max(vb.w, vb.h) / 2);
+      defs +=
+        `<radialGradient id="${gradId(key)}" gradientUnits="userSpaceOnUse"` +
+        ` cx="${cx}" cy="${cy}" r="${r}">${stops}</radialGradient>`;
+    } else {
+      const { x1, y1, x2, y2 } = angleCoords(spec.angle, vb);
+      defs +=
+        `<linearGradient id="${gradId(key)}" gradientUnits="userSpaceOnUse"` +
+        ` x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}">${stops}</linearGradient>`;
+    }
   }
   defs += '</defs>';
 

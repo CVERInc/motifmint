@@ -1,18 +1,14 @@
 ---
 import Layout from '~/layouts/Layout.astro';
-import Vectorizer from '~/components/Vectorizer.svelte';
+import Hero from '~/components/Hero.svelte';
+import Studio from '~/components/Studio.svelte';
 ---
 
 <Layout>
   <main>
-    <header class="hero">
-      <h1>markmint</h1>
-      <p class="tagline">
-        Turn any image into a clean, recolorable SVG logo or icon — in your browser. No upload, no signup, open source.
-      </p>
-    </header>
+    <Hero client:only="svelte" />
 
-    <Vectorizer client:only="svelte" />
+    <Studio client:only="svelte" />
   </main>
 </Layout>
 
@@ -21,20 +17,5 @@ import Vectorizer from '~/components/Vectorizer.svelte';
     max-width: 1200px;
     margin: 0 auto;
     padding: 2rem 1.25rem 3rem;
-  }
-  .hero {
-    text-align: center;
-    margin-bottom: 1.75rem;
-  }
-  h1 {
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin: 0 0 0.5rem;
-    letter-spacing: -0.02em;
-  }
-  .tagline {
-    color: var(--muted);
-    font-size: 1.0625rem;
-    margin: 0;
   }
 </style>

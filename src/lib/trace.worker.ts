@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-import { vectorize } from './vectorize';
+import { traceImage } from './trace';
 import { stripBoundingBoxArtifact, normalizeFills, mergeNearColors } from './strip-artifact';
 import { optimizeSvg } from './svgo';
 import type { TracerParams } from './presets';
@@ -24,7 +24,7 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
   const t0 = performance.now();
   try {
     const arr = new Uint8Array(pixels);
-    let svg = vectorize(arr, width, height, params);
+    let svg = traceImage(arr, width, height, params);
     if (optimize) {
       svg = optimizeSvg(svg);
     }

@@ -1,6 +1,6 @@
 import type { TracerParams } from './presets';
 
-const STORAGE_KEY = 'vectorize:custom-presets';
+const STORAGE_KEY = 'markmint:custom-presets';
 
 export interface CustomPreset {
   name: string;
