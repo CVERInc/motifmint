@@ -34,11 +34,12 @@
   let container = $state<HTMLDivElement | null>(null);
   /**
    * Slider position 0–100.
-   * 0 = SVG only (original fully hidden)  ← default for "edit-first" UX
+   * 0 = SVG only (original fully hidden)
    * 100 = Original only (covers the whole SVG)
    * Anywhere between: original visible from the LEFT edge up to `position`%.
+   * Default 50 = centered split (original ⟷ result side by side).
    */
-  let position = $state(0);
+  let position = $state(50);
   let dragging = $state(false);
 
   // Marquee Selection state

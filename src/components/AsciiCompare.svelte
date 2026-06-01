@@ -10,7 +10,8 @@
 
   let container = $state<HTMLDivElement | null>(null);
   // 0 = ASCII only · 100 = original only · between = original revealed from left.
-  let position = $state(0);
+  // Default 50 = centered split.
+  let position = $state(50);
   let dragging = $state(false);
 
   function move(clientX: number) {
