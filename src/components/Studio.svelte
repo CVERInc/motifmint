@@ -425,6 +425,7 @@
   onMount(() => {
     customPresets = loadCustomPresets();
     savedGradients = loadGradientPresets();
+    measureCellAspect();
     worker = new Worker(new URL('../lib/trace.worker.ts', import.meta.url), { type: 'module' });
     worker.onmessage = (e: MessageEvent<WorkerResponse>) => {
       const target = pendingTargets.get(e.data.id);
@@ -1123,7 +1124,12 @@
     if (!id) return null;
     // charAspect ≈ monospace cell width/height at line-height 1 (~0.6 for the
     // SF Mono / Menlo family) so the art keeps the mark's proportions.
-    return imageToAscii(id.data, id.width, id.height, { cols: asciiCols, charAspect: 0.6 });
+    return imageToAscii(id.data, id.width, id.height, {
+      cols: asciiCols,
+      charAspect: cellAspect, // measured, not guessed
+      ramp: asciiRamp,
+      invert: asciiInvert,
+    });
   }
 
   async function copyAs(kind: CopyKind) {
@@ -1156,16 +1162,42 @@
   let asciiArt = $state('');
   let asciiBusy = $state(false);
   let asciiSeq = 0;
+  let asciiRamp = $state<'standard' | 'blocks' | 'detailed'>('standard');
+  let asciiInvert = $state(false);
+  // Measured monospace cell ratio (charWidth / lineHeight) of the preview font,
+  // so the art keeps the mark's proportions on any font / zoom (no guessing).
+  let cellAspect = $state(0.6);
 
-  // Recompute the ASCII (debounced) whenever the mark, backdrop or width
-  // changes — but only while the ASCII view is active, to avoid idle work.
+  function measureCellAspect() {
+    if (typeof document === 'undefined') return;
+    const el = document.createElement('pre');
+    el.style.cssText =
+      'position:absolute;visibility:hidden;left:-9999px;top:0;margin:0;padding:0;' +
+      'font-family:var(--font-mono);font-size:10px;line-height:1;white-space:pre;';
+    el.textContent = Array.from({ length: 10 }, () => '0000000000').join('\n'); // 10×10
+    document.body.appendChild(el);
+    const r = el.getBoundingClientRect();
+    el.remove();
+    const w = r.width / 10;
+    const h = r.height / 10;
+    if (w > 0 && h > 0) cellAspect = w / h;
+  }
+
+  // Recompute the ASCII (debounced) whenever the mark / width / ramp / invert
+  // change — but only while the ASCII view is active, to avoid idle work.
   $effect(() => {
     // tracked dependencies (read synchronously)
     const live = displaySvg;
     const cols = asciiCols;
+    const ramp = asciiRamp;
+    const invert = asciiInvert;
+    const aspect = cellAspect;
     const bd = `${backdrop.color}${backdrop.alpha}${backdrop.aspect}${backdrop.padding}${backdrop.radius}`;
     const enabled = previewView === 'ascii';
     void cols;
+    void ramp;
+    void invert;
+    void aspect;
     void bd;
     void live;
     if (!enabled || !svg) {
@@ -2068,6 +2100,18 @@
                     <span>Width</span>
                     <input type="range" min="20" max="200" step="2" bind:value={asciiCols} />
                     <span class="value">{asciiCols} cols</span>
+                  </label>
+                  <label class="ascii-opt">
+                    <span>Charset</span>
+                    <select bind:value={asciiRamp} aria-label="ASCII character set">
+                      <option value="standard">Standard</option>
+                      <option value="blocks">Blocks</option>
+                      <option value="detailed">Detailed</option>
+                    </select>
+                  </label>
+                  <label class="ascii-opt">
+                    <input type="checkbox" bind:checked={asciiInvert} />
+                    <span>Invert</span>
                   </label>
                   <div class="ascii-actions">
                     <button type="button" class="tiny-btn" onclick={copyAsciiArt} disabled={!asciiArt}>
@@ -3122,6 +3166,30 @@
     width: 140px;
     accent-color: var(--accent);
   }
+  .ascii-opt {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  .ascii-opt select {
+    appearance: none;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.25rem 0.5rem;
+    font-family: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+  .ascii-opt option {
+    color: #000;
+  }
+  .ascii-opt input[type='checkbox'] {
+    accent-color: var(--accent);
+  }
   .ascii-preview {
     margin: 0;
     max-height: 220px;
@@ -3136,8 +3204,12 @@
     white-space: pre;
     transition: opacity 0.15s;
   }
+  /* Big preview: center the art block in the stage. */
   .ascii-preview.big {
-    max-height: 60vh;
+    max-height: 64vh;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto;
     font-size: 10px;
     padding: 1rem;
   }
