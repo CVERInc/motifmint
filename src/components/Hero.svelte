@@ -1,11 +1,16 @@
 <script lang="ts">
   import { t } from '~/lib/i18n-store';
+  import { hasImage } from '~/lib/view-store';
 </script>
 
-<header class="hero">
-  <h1>{$t('hero.title')}</h1>
-  <p class="tagline">{$t('hero.tagline')}</p>
-</header>
+<!-- Intro copy only matters before a file is loaded; afterwards it just takes
+     up space, so it yields to the studio. -->
+{#if !$hasImage}
+  <header class="hero">
+    <h1>{$t('hero.title')}</h1>
+    <p class="tagline">{$t('hero.tagline')}</p>
+  </header>
+{/if}
 
 <style>
   .hero {

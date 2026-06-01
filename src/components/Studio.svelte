@@ -149,9 +149,10 @@
   // Always reflects the composed output, not just the base trace.
   const outputBytes = $derived(svg ? new TextEncoder().encode(svg).length : 0);
 
-  // Tell the header nav whether there's an image to switch views on.
+  // Tell other islands (header nav, hero) whether a file is loaded — set on
+  // drop, not on trace-done, so the hero gives up its space immediately.
   $effect(() => {
-    hasImage.set(svg != null);
+    hasImage.set(file != null);
   });
 
   let durationMs = $state(0);
