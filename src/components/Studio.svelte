@@ -1237,8 +1237,8 @@
       <p class="dropzone-hint">PNG · JPG · WebP · BMP — converted locally in your browser, nothing is uploaded.</p>
     </label>
   {:else}
-    <div class="workspace">
-      <!-- LEFT: controls -->
+    <div class="workspace" class:ascii-mode={previewView === 'ascii'}>
+      <!-- LEFT: controls (hidden in ASCII mode — tune the mark in SVG view) -->
       <aside class="controls">
         <div class="file-row">
           {#if previewUrl}
@@ -1789,6 +1789,23 @@
 
         {#if displaySvg}
           <div class="result">
+            <div class="view-tabs" role="tablist" aria-label="Preview mode">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={previewView === 'svg'}
+                class:on={previewView === 'svg'}
+                onclick={() => (previewView = 'svg')}
+              >SVG</button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={previewView === 'ascii'}
+                class:on={previewView === 'ascii'}
+                onclick={() => (previewView = 'ascii')}
+              >ASCII</button>
+            </div>
+
             <div class="result-header">
               <div class="size-compare">
                 <span>{formatBytes(file.size)}</span>
@@ -1803,6 +1820,7 @@
                   <Loader2 size={14} class="spin muted" />
                 {/if}
               </div>
+              {#if previewView === 'svg'}
               <div class="result-actions">
                 <label class="export-select" title="Output format">
                   <select bind:value={downloadFormat} aria-label="Output format">
@@ -1880,8 +1898,10 @@
                   </div>
                 </details>
               </div>
+              {/if}
             </div>
 
+            {#if previewView === 'svg'}
             <!-- Image layers: compose several traced images into one mark -->
             <div class="image-layers">
               <div class="layers-row">
@@ -1955,23 +1975,7 @@
                 </div>
               {/if}
             </div>
-
-            <div class="view-tabs" role="tablist" aria-label="Preview view">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={previewView === 'svg'}
-                class:on={previewView === 'svg'}
-                onclick={() => (previewView = 'svg')}
-              >SVG</button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={previewView === 'ascii'}
-                class:on={previewView === 'ascii'}
-                onclick={() => (previewView = 'ascii')}
-              >ASCII</button>
-            </div>
+            {/if}
 
             {#if previewView === 'svg'}
             <div class="editor-toolbar">
@@ -2221,6 +2225,13 @@
     grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
     gap: 1.25rem;
     align-items: start;
+  }
+  /* ASCII is a focused top-level mode: drop the SVG control column, go full width. */
+  .workspace.ascii-mode {
+    grid-template-columns: 1fr;
+  }
+  .workspace.ascii-mode .controls {
+    display: none;
   }
   @media (max-width: 880px) {
     .workspace {
