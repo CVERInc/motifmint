@@ -7,7 +7,7 @@
  * Usage in a component:
  *   import { locale, t } from '~/lib/i18n-store';
  *   <h1>{$t('hero.title')}</h1>
- *   <button onclick={() => locale.set('ja')}>日本語</button>
+ *   <button onclick={() => locale.set('ja-JP')}>日本語</button>
  */
 import { derived, writable } from 'svelte/store';
 import {
@@ -21,10 +21,23 @@ import {
 
 const STORAGE_KEY = 'markmint:locale';
 
+// Migrate values persisted before the move to full BCP-47 tags, so a returning
+// user keeps the language they picked instead of silently resetting.
+const LEGACY_LOCALES: Record<string, Locale> = {
+  en: 'en-US',
+  ja: 'ja-JP',
+  es: 'es-ES',
+  // 'zh-TW' was already a full tag — no remap needed.
+};
+
 function initialLocale(): Locale {
   if (typeof localStorage !== 'undefined') {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved && isLocale(saved)) return saved;
+    if (saved) {
+      if (isLocale(saved)) return saved;
+      const migrated = LEGACY_LOCALES[saved];
+      if (migrated) return migrated;
+    }
   }
   return detectLocale();
 }

@@ -15,17 +15,18 @@
  * locale missing a key it shouldn't.
  */
 
-export const LOCALES = ['en', 'ja', 'zh-TW', 'es'] as const;
+// Full BCP-47 language-region tags — the shared convention across our OSS.
+export const LOCALES = ['en-US', 'ja-JP', 'zh-TW', 'es-ES'] as const;
 export type Locale = (typeof LOCALES)[number];
 
 export const LOCALE_LABELS: Record<Locale, string> = {
-  en: 'English',
-  ja: '日本語',
+  'en-US': 'English',
+  'ja-JP': '日本語',
   'zh-TW': '繁體中文',
-  es: 'Español',
+  'es-ES': 'Español',
 };
 
-export const DEFAULT_LOCALE: Locale = 'en';
+export const DEFAULT_LOCALE: Locale = 'en-US';
 
 const en = {
   'hero.title': 'markmint',
@@ -183,10 +184,10 @@ const es: Dict = {
 };
 
 export const TRANSLATIONS: Record<Locale, Dict> = {
-  en,
-  ja,
+  'en-US': en,
+  'ja-JP': ja,
   'zh-TW': zhTW,
-  es,
+  'es-ES': es,
 };
 
 /**

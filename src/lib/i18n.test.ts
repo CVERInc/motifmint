@@ -9,7 +9,7 @@ import {
 } from './i18n';
 
 describe('TRANSLATIONS completeness', () => {
-  const enKeys = Object.keys(TRANSLATIONS.en) as MessageKey[];
+  const enKeys = Object.keys(TRANSLATIONS['en-US']) as MessageKey[];
 
   it('every locale defines exactly the English key set', () => {
     for (const loc of LOCALES) {
@@ -36,15 +36,15 @@ describe('TRANSLATIONS completeness', () => {
 
 describe('translate', () => {
   it('returns the locale string for a known key', () => {
-    expect(translate('ja', 'action.convert')).toBe('変換');
+    expect(translate('ja-JP', 'action.convert')).toBe('変換');
     expect(translate('zh-TW', 'action.download')).toBe('下載');
   });
 
   it('falls back to English for a locale missing the key', () => {
     // Force a hole by casting — runtime fallback path.
-    const partial = { ...TRANSLATIONS, es: {} } as typeof TRANSLATIONS;
+    const partial = { ...TRANSLATIONS, 'es-ES': {} } as typeof TRANSLATIONS;
     // translate reads the real TRANSLATIONS, so simulate via en fallback:
-    expect(translate('en', 'action.save')).toBe('Save');
+    expect(translate('en-US', 'action.save')).toBe('Save');
     void partial;
   });
 
@@ -59,9 +59,10 @@ describe('translate', () => {
 
 describe('isLocale', () => {
   it('accepts supported tags only', () => {
-    expect(isLocale('ja')).toBe(true);
+    expect(isLocale('ja-JP')).toBe(true);
     expect(isLocale('zh-TW')).toBe(true);
-    expect(isLocale('fr')).toBe(false);
+    expect(isLocale('ja')).toBe(false); // short forms are no longer canonical
+    expect(isLocale('fr-FR')).toBe(false);
     expect(isLocale('zh')).toBe(false);
   });
 });
@@ -69,7 +70,7 @@ describe('isLocale', () => {
 describe('detectLocale', () => {
   it('matches an exact tag', () => {
     expect(detectLocale(['zh-TW'])).toBe('zh-TW');
-    expect(detectLocale(['ja-JP', 'en'])).toBe('ja');
+    expect(detectLocale(['ja-JP', 'en-US'])).toBe('ja-JP');
   });
 
   it('maps any zh-* to Traditional Chinese', () => {
@@ -78,12 +79,13 @@ describe('detectLocale', () => {
   });
 
   it('matches the base language', () => {
-    expect(detectLocale(['es-MX'])).toBe('es');
-    expect(detectLocale(['en-GB'])).toBe('en');
+    expect(detectLocale(['es-MX'])).toBe('es-ES');
+    expect(detectLocale(['en-GB'])).toBe('en-US');
+    expect(detectLocale(['ja'])).toBe('ja-JP'); // bare base resolves to full tag
   });
 
   it('falls back to English for unsupported preferences', () => {
-    expect(detectLocale(['fr', 'de'])).toBe('en');
-    expect(detectLocale([])).toBe('en');
+    expect(detectLocale(['fr', 'de'])).toBe('en-US');
+    expect(detectLocale([])).toBe('en-US');
   });
 });
