@@ -75,4 +75,57 @@ describe('imageToAscii', () => {
   it('returns empty for degenerate dimensions', () => {
     expect(imageToAscii(new Uint8ClampedArray(0), 0, 0)).toBe('');
   });
+
+  it("color: 'none' is byte-identical to the default", () => {
+    const data = img(6, 6, (x, y) => [(x * 40) % 256, (y * 40) % 256, 60, 255]);
+    const plain = imageToAscii(data, 6, 6, { cols: 6, charAspect: 1 });
+    const none = imageToAscii(data, 6, 6, { cols: 6, charAspect: 1, color: 'none' });
+    expect(none).toBe(plain);
+  });
+
+  it("color: 'html' wraps each ink glyph in a coloured span", () => {
+    // Solid mid-grey so every cell inks to the same glyph and colour.
+    const data = img(4, 4, () => [128, 64, 32, 255]);
+    const out = imageToAscii(data, 4, 4, { ...square, color: 'html' });
+    const lines = out.split('\n');
+    expect(lines).toHaveLength(4);
+    // 4 spans per row, each carrying the averaged colour.
+    expect(lines[0].match(/<span style="color:#80(40|41)20">/g)?.length).toBe(4);
+    expect(lines[0]).not.toContain('\n');
+  });
+
+  it("color: 'html' renders transparent cells as plain spaces (no span)", () => {
+    // left half opaque, right half transparent → right trimmed away entirely.
+    const data = img(4, 4, (x) => (x < 2 ? [0, 0, 0, 255] : [0, 0, 0, 0]));
+    const out = imageToAscii(data, 4, 4, { ...square, color: 'html' });
+    expect(out.split('\n').every((l) => (l.match(/<span/g) ?? []).length === 2)).toBe(true);
+  });
+
+  it("color: 'html' escapes glyphs that are HTML-special", () => {
+    // 'detailed' ramp contains <, >, &, " — black maps to its densest glyph ($),
+    // so force a mid value that lands on an escaped one via a custom ramp.
+    const data = img(2, 2, () => [0, 0, 0, 255]);
+    const out = imageToAscii(data, 2, 2, { cols: 2, charAspect: 1, ramp: 'a<', color: 'html' });
+    expect(out).toContain('&lt;');
+    expect(out).not.toMatch(/>\s*<\s*\//); // no raw "<" leaked as markup
+  });
+
+  it("color: 'ansi' emits 24-bit truecolor escapes and resets each line", () => {
+    const data = img(2, 2, () => [200, 100, 50, 255]);
+    const out = imageToAscii(data, 2, 2, { cols: 2, charAspect: 1, color: 'ansi' });
+    const lines = out.split('\n');
+    expect(lines).toHaveLength(2);
+    // Foreground set once per run of same colour, then reset at line end.
+    expect(lines[0]).toContain('\x1b[38;2;200;100;50m');
+    expect(lines[0].endsWith('\x1b[0m')).toBe(true);
+    // Same colour across the row → only one SGR code emitted.
+    expect((lines[0].match(/\x1b\[38;2;/g) ?? []).length).toBe(1);
+  });
+
+  it("color: 'ansi' leaves a fully blank row empty (no stray reset)", () => {
+    const data = img(2, 2, () => [255, 255, 255, 255]); // white → spaces
+    const out = imageToAscii(data, 2, 2, { cols: 2, charAspect: 1, color: 'ansi' });
+    expect(out.replace(/\n/g, '')).toBe('');
+    expect(out).not.toContain('\x1b');
+  });
 });

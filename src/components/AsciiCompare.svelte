@@ -4,9 +4,11 @@
   interface Props {
     originalUrl: string;
     ascii: string;
+    /** Pre-coloured HTML (spans). When set, it's rendered instead of `ascii`. */
+    asciiHtml?: string;
     busy?: boolean;
   }
-  const { originalUrl, ascii, busy = false }: Props = $props();
+  const { originalUrl, ascii, asciiHtml, busy = false }: Props = $props();
 
   let container = $state<HTMLDivElement | null>(null);
   // 0 = ASCII only · 100 = original only · between = original revealed from left.
@@ -42,7 +44,13 @@
 <div class="acompare" bind:this={container} role="presentation">
   <!-- ASCII layer drives the height -->
   <div class="ascii-layer">
-    <pre class="art" class:busy>{ascii || '…'}</pre>
+    {#if asciiHtml}
+      <!-- eslint-disable-next-line svelte/no-at-html-tags — markup is built by
+           imageToAscii from canvas pixels (glyphs HTML-escaped), never user text -->
+      <pre class="art" class:busy>{@html asciiHtml}</pre>
+    {:else}
+      <pre class="art" class:busy>{ascii || '…'}</pre>
+    {/if}
   </div>
 
   <!-- Original, clipped from the right -->
@@ -72,7 +80,14 @@
   >
     <div class="handle-line" style:opacity={position > 0 ? 1 : 0}></div>
     <div class="handle-knob">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+      <svg
+        viewBox="0 0 24 24"
+        width="16"
+        height="16"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
         <path d="m9 6-6 6 6 6" />
         <path d="m15 6 6 6-6 6" />
       </svg>
@@ -118,10 +133,19 @@
       linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
       linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
       linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
-      linear-gradient(-45deg, transparent 75%, #f0f0f0 75%),
-      white;
-    background-size: 16px 16px, 16px 16px, 16px 16px, 16px 16px, auto;
-    background-position: 0 0, 0 8px, 8px -8px, -8px 0, 0 0;
+      linear-gradient(-45deg, transparent 75%, #f0f0f0 75%), white;
+    background-size:
+      16px 16px,
+      16px 16px,
+      16px 16px,
+      16px 16px,
+      auto;
+    background-position:
+      0 0,
+      0 8px,
+      8px -8px,
+      -8px 0,
+      0 0;
   }
   .orig-side img {
     display: block;
