@@ -6,12 +6,22 @@
     ascii: string;
     /** Pre-coloured HTML (spans). When set, it's rendered instead of `ascii`. */
     asciiHtml?: string;
-    /** Tighten letter-spacing so block glyphs (█) tile seamlessly — set for the
-     *  blocks ramp; harmful for sparse ramps (would overlap glyphs). */
+    /** Line-height so the art displays at the terminal's proportions (the export
+     *  bytes are generated for a ~0.5 cell). Defaults to 1. */
+    lineHeight?: number;
+    /** Fill line-box seams so block glyphs (█) tile seamlessly — set for the
+     *  blocks ramp; a no-op for sparse ramps. */
     tight?: boolean;
     busy?: boolean;
   }
-  const { originalUrl, ascii, asciiHtml, tight = false, busy = false }: Props = $props();
+  const {
+    originalUrl,
+    ascii,
+    asciiHtml,
+    lineHeight = 1,
+    tight = false,
+    busy = false,
+  }: Props = $props();
 
   let container = $state<HTMLDivElement | null>(null);
   // 0 = ASCII only · 100 = original only · between = original revealed from left.
@@ -50,9 +60,9 @@
     {#if asciiHtml}
       <!-- eslint-disable-next-line svelte/no-at-html-tags — markup is built by
            imageToAscii from canvas pixels (glyphs HTML-escaped), never user text -->
-      <pre class="art" class:busy class:tight>{@html asciiHtml}</pre>
+      <pre class="art" class:busy class:tight style:line-height={lineHeight}>{@html asciiHtml}</pre>
     {:else}
-      <pre class="art" class:busy class:tight>{ascii || '…'}</pre>
+      <pre class="art" class:busy class:tight style:line-height={lineHeight}>{ascii || '…'}</pre>
     {/if}
   </div>
 
@@ -125,9 +135,13 @@
     line-height: 1;
     white-space: pre;
   }
-  /* Block ramp: pull glyphs together so █ tiles seamlessly (no horizontal seam). */
+  /* Block ramp: dilate each glyph a couple px down/right (own colour) to close
+     the line-box seams between █ rows — pure paint, export bytes untouched. */
   .art.tight {
-    letter-spacing: -0.5px;
+    text-shadow:
+      0.5px 0 0 currentColor,
+      0 1px 0 currentColor,
+      0 2px 0 currentColor;
   }
   /* No opacity dip while recomputing — the content just updates in place,
      so dragging the width slider / switching views stays flicker-free. */

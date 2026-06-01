@@ -1127,26 +1127,26 @@
     return renderImageData(finalSvg, Math.max(240, asciiCols * 3));
   }
 
-  function asciiFrom(id: ImageData, color: AsciiColor, charAspect: number): string {
+  // ONE render for both preview and export (WYSIWYG): generated against the
+  // terminal cell aspect (~0.5, cells are 2× tall) so it's round when `cat` into
+  // a real terminal (verified in macOS Terminal). The preview shows these exact
+  // bytes; previewLineHeight makes the browser display them at the same
+  // proportions, and the blocks `.tight` text-shadow fills the line-box seams.
+  function asciiFrom(id: ImageData, color: AsciiColor): string {
     return imageToAscii(id.data, id.width, id.height, {
       cols: asciiCols,
-      charAspect,
+      charAspect: TERMINAL_CELL_ASPECT,
       ramp: asciiRamp,
       invert: asciiInvert,
       color,
     });
   }
 
-  /**
-   * Build the ASCII rendering for EXPORT (copy / .txt / .ans). Generated against
-   * the terminal cell aspect (~0.5, cells are 2× tall) so it's proportioned for a
-   * real terminal — verified round in macOS Terminal. The on-screen preview uses
-   * a separate browser-aspect render (see the $effect) so its block glyphs tile
-   * tightly at line-height 1; only the export needs terminal proportions.
-   */
+  /** Build the ASCII rendering for EXPORT (copy / .txt / .ans) — same bytes the
+   *  preview shows. */
   async function buildAsciiText(color: AsciiColor = 'none'): Promise<string | null> {
     const id = await buildAsciiData();
-    return id ? asciiFrom(id, color, TERMINAL_CELL_ASPECT) : null;
+    return id ? asciiFrom(id, color) : null;
   }
 
   async function copyAs(kind: CopyKind) {
@@ -1215,11 +1215,11 @@
   let asciiInvert = $state(false);
   let asciiColor = $state(false); // keep each glyph's source colour (web + ANSI)
   // Measured advance ratio (glyph width ÷ font-size) of the preview's monospace
-  // font, ~0.6 for SF Mono / Menlo. The PREVIEW is generated against this real
-  // browser-cell aspect and shown at line-height 1, so block glyphs tile tightly
-  // (no inflated line box → no horizontal seams between rows) while keeping the
-  // mark's proportions. Export uses the terminal aspect instead (buildAsciiText).
+  // font, ~0.6 for SF Mono / Menlo. The art is generated for the terminal cell
+  // aspect (0.5); to display those exact bytes at the same proportions in the
+  // browser we stretch the line box: previewLineHeight = advance ÷ 0.5 (~1.2).
   let cellAdvance = $state(0.6);
+  const previewLineHeight = $derived(cellAdvance / TERMINAL_CELL_ASPECT);
 
   function measureCellAspect() {
     if (typeof document === 'undefined') return;
@@ -1247,7 +1247,6 @@
       asciiRamp,
       asciiInvert,
       asciiColor,
-      cellAdvance,
       backdrop.color,
       backdrop.alpha,
       backdrop.aspect,
@@ -1261,9 +1260,8 @@
     const timer = setTimeout(async () => {
       const id = await buildAsciiData();
       if (seq !== asciiSeq) return;
-      // Preview render: browser-cell aspect + line-height 1 → blocks tile tightly.
-      asciiArt = id ? asciiFrom(id, 'none', cellAdvance) : '';
-      asciiHtml = id && wantColor ? asciiFrom(id, 'html', cellAdvance) : '';
+      asciiArt = id ? asciiFrom(id, 'none') : '';
+      asciiHtml = id && wantColor ? asciiFrom(id, 'html') : '';
       lastAsciiSig = sig;
       asciiBusy = false;
     }, 120);
@@ -1271,12 +1269,10 @@
   });
 
   async function copyAsciiArt() {
-    // Copy the EXPORT render (terminal aspect), not the on-screen preview, so a
-    // pasted banner is round in a real terminal.
-    const text = await buildAsciiText();
-    if (text == null) return;
+    // asciiArt is the same bytes the preview shows (and that .txt/.ans export).
+    if (!asciiArt) return;
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(asciiArt);
       copiedKind = 'ascii';
       clearTimeout(copyTimer);
       copyTimer = setTimeout(() => (copiedKind = null), 1500);
@@ -2475,6 +2471,7 @@
                     originalUrl={previewUrl}
                     ascii={asciiArt}
                     asciiHtml={asciiColor ? asciiHtml : undefined}
+                    lineHeight={previewLineHeight}
                     tight={asciiRamp === 'blocks'}
                     busy={asciiBusy}
                   />
@@ -2484,12 +2481,14 @@
                     class="ascii-preview big"
                     class:busy={asciiBusy}
                     class:tight={asciiRamp === 'blocks'}
+                    style:line-height={previewLineHeight}
                     aria-label="ASCII preview">{@html asciiHtml}</pre>
                 {:else}
                   <pre
                     class="ascii-preview big"
                     class:busy={asciiBusy}
                     class:tight={asciiRamp === 'blocks'}
+                    style:line-height={previewLineHeight}
                     aria-label="ASCII preview">{asciiArt || '…'}</pre>
                 {/if}
               </div>
@@ -3600,10 +3599,15 @@
   .ascii-preview.busy {
     opacity: 0.5;
   }
-  /* Block ramp: pull glyphs together so █ tiles seamlessly (no horizontal seam
-     from sub-pixel advance gaps at small font sizes), matching a terminal. */
+  /* Block ramp: a terminal paints █ across the whole (tall) cell, but the
+     browser only fills ~1em inside our inflated line box, leaving seams between
+     rows. Dilate each glyph a couple px down/right with its own colour to close
+     them — pure paint, so the byte layout (and thus the export) is untouched. */
   .ascii-preview.tight {
-    letter-spacing: -0.5px;
+    text-shadow:
+      0.5px 0 0 currentColor,
+      0 1px 0 currentColor,
+      0 2px 0 currentColor;
   }
   .ascii-actions {
     display: flex;
