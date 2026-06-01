@@ -89,6 +89,7 @@
   import { detectBackgroundColor, type PathBox } from '~/lib/background';
   import { applyEffects, type EffectOptions } from '~/lib/effects';
   import { imageToAscii } from '~/lib/ascii';
+  import { previewView, hasImage } from '~/lib/view-store';
   import { buildSizeSet, DEFAULT_SCALES } from '~/lib/export-set';
   import {
     loadGradientPresets,
@@ -147,6 +148,11 @@
   const hasLayers = $derived(extraLayers.length > 0);
   // Always reflects the composed output, not just the base trace.
   const outputBytes = $derived(svg ? new TextEncoder().encode(svg).length : 0);
+
+  // Tell the header nav whether there's an image to switch views on.
+  $effect(() => {
+    hasImage.set(svg != null);
+  });
 
   let durationMs = $state(0);
   let status = $state<Status>('idle');
@@ -694,11 +700,12 @@
       return;
     }
     if (previewUrl) URL.revokeObjectURL(previewUrl);
-    // A fresh primary image starts a new composition.
+    // A fresh primary image starts a new composition, in SVG view.
     clearExtraLayers();
     baseTransform = { ...IDENTITY_TRANSFORM };
     baseHidden = false;
     selectedLayerId = 'base';
+    previewView.set('svg');
     file = f;
     previewUrl = URL.createObjectURL(f);
     baseSvg = null;
@@ -1159,7 +1166,6 @@
   }
 
   // ── Preview view mode: the traced SVG (compare slider) or live ASCII ────────
-  let previewView = $state<'svg' | 'ascii'>('svg');
   let asciiArt = $state('');
   let asciiBusy = $state(false);
   let asciiSeq = 0;
@@ -1194,7 +1200,7 @@
     const invert = asciiInvert;
     const aspect = cellAspect;
     const bd = `${backdrop.color}${backdrop.alpha}${backdrop.aspect}${backdrop.padding}${backdrop.radius}`;
-    const enabled = previewView === 'ascii';
+    const enabled = $previewView === 'ascii';
     void cols;
     void ramp;
     void invert;
@@ -1270,22 +1276,9 @@
       <p class="dropzone-hint">PNG · JPG · WebP · BMP — converted locally in your browser, nothing is uploaded.</p>
     </label>
   {:else}
-    <div class="workspace" class:ascii-mode={previewView === 'ascii'}>
+    <div class="workspace" class:ascii-mode={$previewView === 'ascii'}>
       <!-- LEFT: controls (hidden in ASCII mode — tune the mark in SVG view) -->
       <aside class="controls">
-        <div class="file-row">
-          {#if previewUrl}
-            <img class="thumb" src={previewUrl} alt="" />
-          {/if}
-          <div class="file-meta">
-            <div class="file-name">{file.name}</div>
-            <div class="file-size">{formatBytes(file.size)}</div>
-          </div>
-          <button class="ghost icon-btn" type="button" onclick={reset} aria-label="Choose different file">
-            <RefreshCw size={16} />
-          </button>
-        </div>
-
         <div class="card">
           <div class="card-row">
             <span class="card-label">Preset</span>
@@ -1822,21 +1815,15 @@
 
         {#if displaySvg}
           <div class="result">
-            <div class="view-tabs" role="tablist" aria-label="Preview mode">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={previewView === 'svg'}
-                class:on={previewView === 'svg'}
-                onclick={() => (previewView = 'svg')}
-              >SVG</button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={previewView === 'ascii'}
-                class:on={previewView === 'ascii'}
-                onclick={() => (previewView = 'ascii')}
-              >ASCII</button>
+            <!-- Source row: filename + replace — persistent across SVG/ASCII. -->
+            <div class="file-row">
+              <div class="file-meta">
+                <div class="file-name">{file.name}</div>
+                <div class="file-size">{formatBytes(file.size)}</div>
+              </div>
+              <button class="ghost icon-btn" type="button" onclick={reset} aria-label="Choose different file">
+                <RefreshCw size={16} />
+              </button>
             </div>
 
             <div class="result-header">
@@ -1853,7 +1840,7 @@
                   <Loader2 size={14} class="spin muted" />
                 {/if}
               </div>
-              {#if previewView === 'svg'}
+              {#if $previewView === 'svg'}
               <div class="result-actions">
                 <label class="export-select" title="Output format">
                   <select bind:value={downloadFormat} aria-label="Output format">
@@ -1934,8 +1921,8 @@
               {/if}
             </div>
 
-            {#if previewView === 'svg'}
-            <!-- Image layers: compose several traced images into one mark -->
+            <!-- Image layers: compose several traced images into one mark.
+                 Persistent across SVG/ASCII — it defines what the mark IS. -->
             <div class="image-layers">
               <div class="layers-row">
                 <button
@@ -2008,9 +1995,8 @@
                 </div>
               {/if}
             </div>
-            {/if}
 
-            {#if previewView === 'svg'}
+            {#if $previewView === 'svg'}
             <div class="editor-toolbar">
               <div class="tool-group">
                 <button
@@ -2315,14 +2301,6 @@
     background: var(--surface);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-  }
-  .thumb {
-    width: 40px;
-    height: 40px;
-    object-fit: cover;
-    border-radius: 6px;
-    background: #f0f0f0;
-    flex-shrink: 0;
   }
   .file-meta {
     flex: 1;
@@ -3120,32 +3098,6 @@
   }
   .copy-options button:hover {
     background: var(--accent-bg);
-  }
-  /* ── Preview view tabs (SVG ⇄ ASCII) ── */
-  .view-tabs {
-    display: inline-flex;
-    gap: 2px;
-    margin-bottom: 0.75rem;
-    padding: 2px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
-  }
-  .view-tabs button {
-    padding: 0.35rem 1rem;
-    border: none;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--muted);
-    font-family: inherit;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-  }
-  .view-tabs button.on {
-    background: var(--accent);
-    color: var(--accent-fg);
   }
   /* ── ASCII view (in the preview area) ── */
   .ascii-view {
