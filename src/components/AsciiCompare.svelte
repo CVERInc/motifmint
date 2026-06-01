@@ -6,9 +6,12 @@
     ascii: string;
     /** Pre-coloured HTML (spans). When set, it's rendered instead of `ascii`. */
     asciiHtml?: string;
+    /** Line-height for the art so the displayed cell matches the terminal's
+     *  aspect — makes the preview a WYSIWYG of `cat`. Defaults to 1. */
+    lineHeight?: number;
     busy?: boolean;
   }
-  const { originalUrl, ascii, asciiHtml, busy = false }: Props = $props();
+  const { originalUrl, ascii, asciiHtml, lineHeight = 1, busy = false }: Props = $props();
 
   let container = $state<HTMLDivElement | null>(null);
   // 0 = ASCII only · 100 = original only · between = original revealed from left.
@@ -47,9 +50,9 @@
     {#if asciiHtml}
       <!-- eslint-disable-next-line svelte/no-at-html-tags — markup is built by
            imageToAscii from canvas pixels (glyphs HTML-escaped), never user text -->
-      <pre class="art" class:busy>{@html asciiHtml}</pre>
+      <pre class="art" class:busy style:line-height={lineHeight}>{@html asciiHtml}</pre>
     {:else}
-      <pre class="art" class:busy>{ascii || '…'}</pre>
+      <pre class="art" class:busy style:line-height={lineHeight}>{ascii || '…'}</pre>
     {/if}
   </div>
 

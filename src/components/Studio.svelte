@@ -73,7 +73,7 @@
   import { History } from '~/lib/history';
   import { detectBackgroundColor, type PathBox } from '~/lib/background';
   import { applyEffects, type EffectOptions } from '~/lib/effects';
-  import { imageToAscii, type AsciiColor } from '~/lib/ascii';
+  import { imageToAscii, type AsciiColor, TERMINAL_CELL_ASPECT } from '~/lib/ascii';
   import { previewView, hasImage } from '~/lib/view-store';
   import { buildSizeSet, DEFAULT_SCALES } from '~/lib/export-set';
   import {
@@ -1128,11 +1128,13 @@
   }
 
   function asciiFrom(id: ImageData, color: AsciiColor): string {
-    // charAspect ≈ monospace cell width/height at line-height 1 (~0.6 for the
-    // SF Mono / Menlo family) so the art keeps the mark's proportions.
+    // Generate against a terminal cell aspect (~0.5, cells are 2× tall), not the
+    // browser font's (~0.6), so the art is proportioned for a real terminal.
+    // `asciiAspect` is user-tunable; the preview displays at the standard
+    // reference (previewLineHeight) so it stays a WYSIWYG of `cat`.
     return imageToAscii(id.data, id.width, id.height, {
       cols: asciiCols,
-      charAspect: cellAspect, // measured, not guessed
+      charAspect: asciiAspect,
       ramp: asciiRamp,
       invert: asciiInvert,
       color,
@@ -1210,9 +1212,20 @@
   let asciiRamp = $state<'standard' | 'blocks' | 'detailed'>('standard');
   let asciiInvert = $state(false);
   let asciiColor = $state(false); // keep each glyph's source colour (web + ANSI)
-  // Measured monospace cell ratio (charWidth / lineHeight) of the preview font,
-  // so the art keeps the mark's proportions on any font / zoom (no guessing).
-  let cellAspect = $state(0.6);
+  // Assumed terminal cell aspect (width ÷ height) the art is generated for.
+  // Default is the standard ~2×-tall cell (TERMINAL_CELL_ASPECT); the slider lets
+  // the user fine-tune for a terminal/font whose cells aren't exactly 1:2.
+  // Lower = taller art (more rows); higher = shorter. The preview is rendered at
+  // the fixed standard reference (previewLineHeight), so dragging visibly
+  // stretches/squishes it exactly as `cat` will on a standard terminal.
+  let asciiAspect = $state(TERMINAL_CELL_ASPECT);
+  // Measured advance ratio (glyph width ÷ font-size) of the preview's monospace
+  // font, ~0.6 for SF Mono / Menlo. The art is generated for the terminal's cell
+  // aspect (TERMINAL_CELL_ASPECT ≈ 0.5), so to make the preview a faithful
+  // WYSIWYG of the CLI we stretch each line's height until the *displayed* cell
+  // matches that aspect: lineHeight = advance ÷ TERMINAL_CELL_ASPECT (~1.2).
+  let cellAdvance = $state(0.6);
+  const previewLineHeight = $derived(cellAdvance / TERMINAL_CELL_ASPECT);
 
   function measureCellAspect() {
     if (typeof document === 'undefined') return;
@@ -1225,8 +1238,8 @@
     const r = el.getBoundingClientRect();
     el.remove();
     const w = r.width / 10;
-    const h = r.height / 10;
-    if (w > 0 && h > 0) cellAspect = w / h;
+    const h = r.height / 10; // line-height:1 → cell height == font-size
+    if (w > 0 && h > 0) cellAdvance = w / h;
   }
 
   // Recompute the ASCII only while the ASCII view is active AND its inputs
@@ -1240,7 +1253,7 @@
       asciiRamp,
       asciiInvert,
       asciiColor,
-      cellAspect,
+      asciiAspect,
       backdrop.color,
       backdrop.alpha,
       backdrop.aspect,
@@ -2400,6 +2413,14 @@
                     <input type="range" min="20" max="200" step="2" bind:value={asciiCols} />
                     <span class="value">{asciiCols} cols</span>
                   </label>
+                  <label
+                    class="ascii-width"
+                    title="Terminal cell aspect (width ÷ height) the art is generated for. Lower = taller, higher = shorter. 0.50 suits a standard 2×-tall cell."
+                  >
+                    <span>Aspect</span>
+                    <input type="range" min="0.4" max="0.7" step="0.01" bind:value={asciiAspect} />
+                    <span class="value">{asciiAspect.toFixed(2)}</span>
+                  </label>
                   <label class="ascii-opt">
                     <span>Charset</span>
                     <select bind:value={asciiRamp} aria-label="ASCII character set">
@@ -2464,6 +2485,7 @@
                     originalUrl={previewUrl}
                     ascii={asciiArt}
                     asciiHtml={asciiColor ? asciiHtml : undefined}
+                    lineHeight={previewLineHeight}
                     busy={asciiBusy}
                   />
                 {:else if asciiColor && asciiHtml}
@@ -2471,11 +2493,13 @@
                   <pre
                     class="ascii-preview big"
                     class:busy={asciiBusy}
+                    style:line-height={previewLineHeight}
                     aria-label="ASCII preview">{@html asciiHtml}</pre>
                 {:else}
                   <pre
                     class="ascii-preview big"
                     class:busy={asciiBusy}
+                    style:line-height={previewLineHeight}
                     aria-label="ASCII preview">{asciiArt || '…'}</pre>
                 {/if}
               </div>

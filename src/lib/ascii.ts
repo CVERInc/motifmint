@@ -16,6 +16,16 @@
  *            startup screen). Each line is reset with \x1b[0m.
  */
 
+/**
+ * Canonical terminal character-cell aspect (cell width ÷ height). A monospace
+ * terminal cell is ~2× tall as wide, so ≈0.5. Generating ASCII against this
+ * fixed value keeps the art correctly proportioned when `cat` into a real
+ * terminal — and lets a web preview be a faithful WYSIWYG of the CLI by
+ * displaying its cells at the same aspect (via line-height), rather than at the
+ * browser font's own (taller-looking) ~0.6 cell.
+ */
+export const TERMINAL_CELL_ASPECT = 0.5;
+
 export const ASCII_RAMPS: Record<string, string> = {
   standard: ' .:-=+*#%@',
   blocks: ' ░▒▓█',
@@ -33,7 +43,8 @@ export interface AsciiOptions {
   invert?: boolean;
   /** Treat transparent pixels as ink instead of spaces. */
   ignoreAlpha?: boolean;
-  /** Character cell aspect (height/width). Terminal glyphs are ~2× tall. */
+  /** Character cell aspect (cell width ÷ height). Terminal glyphs are ~2× tall,
+   *  so ≈0.5 (the default, {@link TERMINAL_CELL_ASPECT}). */
   charAspect?: number;
   /** Colour carrier for the output. Defaults to 'none' (plain text). */
   color?: AsciiColor;
@@ -146,7 +157,7 @@ export function imageToAscii(
   const lastIdx = glyphs.length - 1;
   const invert = options.invert ?? false;
   const ignoreAlpha = options.ignoreAlpha ?? false;
-  const charAspect = options.charAspect ?? 0.5;
+  const charAspect = options.charAspect ?? TERMINAL_CELL_ASPECT;
   const color = options.color ?? 'none';
 
   if (width <= 0 || height <= 0 || lastIdx < 0) return '';
