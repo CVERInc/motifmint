@@ -98,6 +98,7 @@
   } from '~/lib/gradient-presets';
   import type { WorkerRequest, WorkerResponse } from '~/lib/trace.worker';
   import CompareSlider from './CompareSlider.svelte';
+  import AsciiCompare from './AsciiCompare.svelte';
 
   type Status = 'idle' | 'converting' | 'done' | 'error';
 
@@ -2124,7 +2125,11 @@
                     </button>
                   </div>
                 </div>
-                <pre class="ascii-preview big" class:busy={asciiBusy} aria-label="ASCII preview">{asciiArt || '…'}</pre>
+                {#if previewUrl}
+                  <AsciiCompare originalUrl={previewUrl} ascii={asciiArt} busy={asciiBusy} />
+                {:else}
+                  <pre class="ascii-preview big" class:busy={asciiBusy} aria-label="ASCII preview">{asciiArt || '…'}</pre>
+                {/if}
               </div>
             {/if}
 
