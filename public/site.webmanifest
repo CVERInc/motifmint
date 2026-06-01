@@ -9,9 +9,15 @@
   "theme_color": "#052829",
   "icons": [
     {
-      "src": "favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "cver-logo-small.png",
+      "sizes": "100x100",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "cver-logo.png",
+      "sizes": "630x630",
+      "type": "image/png",
       "purpose": "any"
     }
   ]
