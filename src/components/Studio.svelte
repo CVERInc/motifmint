@@ -1149,20 +1149,20 @@
     saveBlob(new Blob([text], { type: 'text/plain;charset=utf-8' }), 'txt', `${stripExtension(file.name)}-ascii`);
   }
 
-  // ── Live ASCII preview panel ────────────────────────────────────────────────
-  let asciiOn = $state(false);
+  // ── Preview view mode: the traced SVG (compare slider) or live ASCII ────────
+  let previewView = $state<'svg' | 'ascii'>('svg');
   let asciiArt = $state('');
   let asciiBusy = $state(false);
   let asciiSeq = 0;
 
-  // Recompute the preview (debounced) whenever the mark, backdrop or width
-  // changes — but only while the panel is open, to avoid idle rasterizing.
+  // Recompute the ASCII (debounced) whenever the mark, backdrop or width
+  // changes — but only while the ASCII view is active, to avoid idle work.
   $effect(() => {
     // tracked dependencies (read synchronously)
     const live = displaySvg;
     const cols = asciiCols;
     const bd = `${backdrop.color}${backdrop.alpha}${backdrop.aspect}${backdrop.padding}${backdrop.radius}`;
-    const enabled = asciiOn;
+    const enabled = previewView === 'ascii';
     void cols;
     void bd;
     void live;
@@ -1456,36 +1456,6 @@
               {/if}
             </div>
           </div>
-
-          <div class="card-row" style="width: 100%;">
-            <span class="card-label">ASCII art</span>
-            <label class="fx-toggle" style="margin-left:auto;">
-              <input type="checkbox" bind:checked={asciiOn} />
-              <span>Show</span>
-            </label>
-          </div>
-          {#if asciiOn}
-            <div class="ascii-panel">
-              <div class="slider tight">
-                <div class="slider-head">
-                  <label for="ascii-cols">Width</label>
-                  <span class="value">{asciiCols} cols</span>
-                </div>
-                <input id="ascii-cols" type="range" min="20" max="200" step="2" bind:value={asciiCols} />
-              </div>
-              <pre class="ascii-preview" class:busy={asciiBusy} aria-label="ASCII preview">{asciiArt || '…'}</pre>
-              <div class="ascii-actions">
-                <button type="button" class="tiny-btn" onclick={copyAsciiArt} disabled={!asciiArt}>
-                  <Copy size={12} />
-                  <span>{copiedKind === 'ascii' ? 'Copied ✓' : 'Copy'}</span>
-                </button>
-                <button type="button" class="tiny-btn" onclick={downloadAscii} disabled={!asciiArt}>
-                  <Download size={12} />
-                  <span>.txt</span>
-                </button>
-              </div>
-            </div>
-          {/if}
 
           {#if pathList.length > 0}
             <div class="layers">
@@ -2056,16 +2026,56 @@
               </div>
             </div>
 
-            {#if previewUrl}
-              <CompareSlider
-                originalUrl={previewUrl}
-                svg={displaySvg}
-                {backdrop}
-                {activeTool}
-                onPathClick={handlePathClick}
-                onPathHover={setHoveredOrigIdx}
-                onMarqueeSelect={handleMarqueeSelect}
-              />
+            <div class="view-tabs" role="tablist" aria-label="Preview view">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={previewView === 'svg'}
+                class:on={previewView === 'svg'}
+                onclick={() => (previewView = 'svg')}
+              >SVG</button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={previewView === 'ascii'}
+                class:on={previewView === 'ascii'}
+                onclick={() => (previewView = 'ascii')}
+              >ASCII</button>
+            </div>
+
+            {#if previewView === 'svg'}
+              {#if previewUrl}
+                <CompareSlider
+                  originalUrl={previewUrl}
+                  svg={displaySvg}
+                  {backdrop}
+                  {activeTool}
+                  onPathClick={handlePathClick}
+                  onPathHover={setHoveredOrigIdx}
+                  onMarqueeSelect={handleMarqueeSelect}
+                />
+              {/if}
+            {:else}
+              <div class="ascii-view">
+                <div class="ascii-bar">
+                  <label class="ascii-width">
+                    <span>Width</span>
+                    <input type="range" min="20" max="200" step="2" bind:value={asciiCols} />
+                    <span class="value">{asciiCols} cols</span>
+                  </label>
+                  <div class="ascii-actions">
+                    <button type="button" class="tiny-btn" onclick={copyAsciiArt} disabled={!asciiArt}>
+                      <Copy size={12} />
+                      <span>{copiedKind === 'ascii' ? 'Copied ✓' : 'Copy'}</span>
+                    </button>
+                    <button type="button" class="tiny-btn" onclick={downloadAscii} disabled={!asciiArt}>
+                      <Download size={12} />
+                      <span>.txt</span>
+                    </button>
+                  </div>
+                </div>
+                <pre class="ascii-preview big" class:busy={asciiBusy} aria-label="ASCII preview">{asciiArt || '…'}</pre>
+              </div>
             {/if}
 
             {#if selectedPathIdx !== null && popoverPosition}
@@ -3049,15 +3059,55 @@
   .copy-options button:hover {
     background: var(--accent-bg);
   }
-  /* ── ASCII art panel ── */
-  .ascii-panel {
+  /* ── Preview view tabs (SVG ⇄ ASCII) ── */
+  .view-tabs {
+    display: inline-flex;
+    gap: 2px;
+    margin-bottom: 0.75rem;
+    padding: 2px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .view-tabs button {
+    padding: 0.35rem 1rem;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .view-tabs button.on {
+    background: var(--accent);
+    color: var(--accent-fg);
+  }
+  /* ── ASCII view (in the preview area) ── */
+  .ascii-view {
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
-    padding: 0.6rem 0.7rem;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.03);
+  }
+  .ascii-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .ascii-width {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  .ascii-width input[type='range'] {
+    width: 140px;
+    accent-color: var(--accent);
   }
   .ascii-preview {
     margin: 0;
@@ -3072,6 +3122,11 @@
     line-height: 1;
     white-space: pre;
     transition: opacity 0.15s;
+  }
+  .ascii-preview.big {
+    max-height: 60vh;
+    font-size: 10px;
+    padding: 1rem;
   }
   .ascii-preview.busy {
     opacity: 0.5;
