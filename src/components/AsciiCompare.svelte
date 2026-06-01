@@ -106,11 +106,9 @@
     font-size: 10px;
     line-height: 1;
     white-space: pre;
-    transition: opacity 0.15s;
   }
-  .art.busy {
-    opacity: 0.5;
-  }
+  /* No opacity dip while recomputing — the content just updates in place,
+     so dragging the width slider / switching views stays flicker-free. */
   .orig-side {
     position: absolute;
     inset: 0;

@@ -1170,6 +1170,7 @@
   let asciiArt = $state('');
   let asciiBusy = $state(false);
   let asciiSeq = 0;
+  let lastAsciiSig = ''; // inputs that produced the current asciiArt
   let asciiRamp = $state<'standard' | 'blocks' | 'detailed'>('standard');
   let asciiInvert = $state(false);
   // Measured monospace cell ratio (charWidth / lineHeight) of the preview font,
@@ -1191,36 +1192,34 @@
     if (w > 0 && h > 0) cellAspect = w / h;
   }
 
-  // Recompute the ASCII (debounced) whenever the mark / width / ramp / invert
-  // change — but only while the ASCII view is active, to avoid idle work.
+  // Recompute the ASCII only while the ASCII view is active AND its inputs
+  // actually changed. We never blank `asciiArt`, so re-entering the view shows
+  // the last render instantly (no placeholder flash / flicker).
   $effect(() => {
-    // tracked dependencies (read synchronously)
-    const live = displaySvg;
-    const cols = asciiCols;
-    const ramp = asciiRamp;
-    const invert = asciiInvert;
-    const aspect = cellAspect;
-    const bd = `${backdrop.color}${backdrop.alpha}${backdrop.aspect}${backdrop.padding}${backdrop.radius}`;
-    const enabled = $previewView === 'ascii';
-    void cols;
-    void ramp;
-    void invert;
-    void aspect;
-    void bd;
-    void live;
-    if (!enabled || !svg) {
-      asciiArt = '';
-      return;
-    }
+    if ($previewView !== 'ascii' || !svg) return; // keep the last art as-is
+    const sig = [
+      displaySvg,
+      asciiCols,
+      asciiRamp,
+      asciiInvert,
+      cellAspect,
+      backdrop.color,
+      backdrop.alpha,
+      backdrop.aspect,
+      backdrop.padding,
+      backdrop.radius,
+    ].join('|');
+    if (sig === lastAsciiSig) return; // already up to date → nothing to do
     const seq = ++asciiSeq;
     asciiBusy = true;
     const timer = setTimeout(async () => {
       const text = await buildAsciiText();
       if (seq === asciiSeq) {
         asciiArt = text ?? '';
+        lastAsciiSig = sig;
         asciiBusy = false;
       }
-    }, 250);
+    }, 120);
     return () => clearTimeout(timer);
   });
 
