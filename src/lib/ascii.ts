@@ -6,14 +6,23 @@
  * Convention: ramps run light→dark (index 0 = least ink). A dark pixel maps to
  * the densest glyph; transparent pixels become spaces so a logo's silhouette
  * shows cleanly. `invert` swaps light/dark (e.g. for light-on-dark terminals).
+ *
+ * Colour: each cell also carries the average RGB of its source pixels. Plain
+ * text can't hold colour (that's what keeps it paste-able into a README), so
+ * `color` picks a carrier instead:
+ *   'none' — plain text, exactly the monochrome output (the default).
+ *   'html' — each glyph wrapped in <span style="color:#rgb">, for the web.
+ *   'ansi' — 24-bit truecolor escapes, for a terminal banner (e.g. a CLI
+ *            startup screen). Each line is reset with \x1b[0m.
  */
 
 export const ASCII_RAMPS: Record<string, string> = {
   standard: ' .:-=+*#%@',
   blocks: ' ░▒▓█',
-  detailed:
-    " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",
+  detailed: ' .\'`^",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$',
 };
+
+export type AsciiColor = 'none' | 'html' | 'ansi';
 
 export interface AsciiOptions {
   /** Output width in characters. */
@@ -26,10 +35,99 @@ export interface AsciiOptions {
   ignoreAlpha?: boolean;
   /** Character cell aspect (height/width). Terminal glyphs are ~2× tall. */
   charAspect?: number;
+  /** Colour carrier for the output. Defaults to 'none' (plain text). */
+  color?: AsciiColor;
+}
+
+/** One rendered cell: its glyph plus the average colour of its source pixels. */
+interface Cell {
+  ch: string;
+  r: number;
+  g: number;
+  b: number;
 }
 
 function luminance(r: number, g: number, b: number): number {
   return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+function clamp8(n: number): number {
+  return n < 0 ? 0 : n > 255 ? 255 : Math.round(n);
+}
+
+function toHex(r: number, g: number, b: number): string {
+  const h = (n: number) => clamp8(n).toString(16).padStart(2, '0');
+  return `#${h(r)}${h(g)}${h(b)}`;
+}
+
+function escapeHtml(ch: string): string {
+  switch (ch) {
+    case '&':
+      return '&amp;';
+    case '<':
+      return '&lt;';
+    case '>':
+      return '&gt;';
+    case '"':
+      return '&quot;';
+    default:
+      return ch;
+  }
+}
+
+/** Trim trailing blank cells so a logo's silhouette doesn't carry dead space. */
+function trimRow(cells: Cell[]): Cell[] {
+  let end = cells.length;
+  while (end > 0 && cells[end - 1].ch === ' ') end--;
+  return end === cells.length ? cells : cells.slice(0, end);
+}
+
+function serializePlain(rows: Cell[][]): string {
+  return rows
+    .map((row) =>
+      trimRow(row)
+        .map((c) => c.ch)
+        .join(''),
+    )
+    .join('\n');
+}
+
+function serializeHtml(rows: Cell[][]): string {
+  return rows
+    .map((row) =>
+      trimRow(row)
+        .map((c) =>
+          c.ch === ' '
+            ? ' '
+            : `<span style="color:${toHex(c.r, c.g, c.b)}">${escapeHtml(c.ch)}</span>`,
+        )
+        .join(''),
+    )
+    .join('\n');
+}
+
+function serializeAnsi(rows: Cell[][]): string {
+  const RESET = '\x1b[0m';
+  return rows
+    .map((row) => {
+      const cells = trimRow(row);
+      let out = '';
+      let cur = ''; // current SGR colour code in effect
+      for (const c of cells) {
+        if (c.ch === ' ') {
+          out += ' '; // spaces need no colour
+          continue;
+        }
+        const code = `\x1b[38;2;${clamp8(c.r)};${clamp8(c.g)};${clamp8(c.b)}m`;
+        if (code !== cur) {
+          out += code;
+          cur = code;
+        }
+        out += c.ch;
+      }
+      return cur ? out + RESET : out;
+    })
+    .join('\n');
 }
 
 /**
@@ -49,40 +147,54 @@ export function imageToAscii(
   const invert = options.invert ?? false;
   const ignoreAlpha = options.ignoreAlpha ?? false;
   const charAspect = options.charAspect ?? 0.5;
+  const color = options.color ?? 'none';
 
   if (width <= 0 || height <= 0 || lastIdx < 0) return '';
 
-  const rows = Math.max(1, Math.round((cols * (height / width)) * charAspect));
+  const rows = Math.max(1, Math.round(cols * (height / width) * charAspect));
 
-  const lines: string[] = [];
+  const grid: Cell[][] = [];
   for (let ry = 0; ry < rows; ry++) {
     const y0 = Math.floor((ry * height) / rows);
     const y1 = Math.max(y0 + 1, Math.floor(((ry + 1) * height) / rows));
-    let line = '';
+    const row: Cell[] = [];
     for (let cx = 0; cx < cols; cx++) {
       const x0 = Math.floor((cx * width) / cols);
       const x1 = Math.max(x0 + 1, Math.floor(((cx + 1) * width) / cols));
       let lumSum = 0;
+      let rSum = 0;
+      let gSum = 0;
+      let bSum = 0;
       let alphaSum = 0;
       let n = 0;
       for (let y = y0; y < y1 && y < height; y++) {
         for (let x = x0; x < x1 && x < width; x++) {
           const i = (y * width + x) * 4;
-          lumSum += luminance(data[i], data[i + 1], data[i + 2]);
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          lumSum += luminance(r, g, b);
+          rSum += r;
+          gSum += g;
+          bSum += b;
           alphaSum += data[i + 3];
           n++;
         }
       }
       const alpha = n ? alphaSum / n : 0;
       if (!ignoreAlpha && alpha < 128) {
-        line += ' ';
+        row.push({ ch: ' ', r: 0, g: 0, b: 0 });
         continue;
       }
       const lum = n ? lumSum / n : 255;
       const t = invert ? lum / 255 : 1 - lum / 255; // 0 = lightest glyph
-      line += glyphs[Math.round(t * lastIdx)] ?? ' ';
+      const ch = glyphs[Math.round(t * lastIdx)] ?? ' ';
+      row.push({ ch, r: n ? rSum / n : 0, g: n ? gSum / n : 0, b: n ? bSum / n : 0 });
     }
-    lines.push(line.replace(/\s+$/, ''));
+    grid.push(row);
   }
-  return lines.join('\n');
+
+  if (color === 'html') return serializeHtml(grid);
+  if (color === 'ansi') return serializeAnsi(grid);
+  return serializePlain(grid);
 }
