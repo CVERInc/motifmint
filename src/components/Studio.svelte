@@ -1121,7 +1121,9 @@
     if (!finalSvg) return null;
     const id = await renderImageData(finalSvg, Math.max(240, asciiCols * 3));
     if (!id) return null;
-    return imageToAscii(id.data, id.width, id.height, { cols: asciiCols });
+    // charAspect ≈ monospace cell width/height at line-height 1 (~0.6 for the
+    // SF Mono / Menlo family) so the art keeps the mark's proportions.
+    return imageToAscii(id.data, id.width, id.height, { cols: asciiCols, charAspect: 0.6 });
   }
 
   async function copyAs(kind: CopyKind) {
@@ -1954,6 +1956,24 @@
               {/if}
             </div>
 
+            <div class="view-tabs" role="tablist" aria-label="Preview view">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={previewView === 'svg'}
+                class:on={previewView === 'svg'}
+                onclick={() => (previewView = 'svg')}
+              >SVG</button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={previewView === 'ascii'}
+                class:on={previewView === 'ascii'}
+                onclick={() => (previewView = 'ascii')}
+              >ASCII</button>
+            </div>
+
+            {#if previewView === 'svg'}
             <div class="editor-toolbar">
               <div class="tool-group">
                 <button
@@ -2026,24 +2046,6 @@
               </div>
             </div>
 
-            <div class="view-tabs" role="tablist" aria-label="Preview view">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={previewView === 'svg'}
-                class:on={previewView === 'svg'}
-                onclick={() => (previewView = 'svg')}
-              >SVG</button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={previewView === 'ascii'}
-                class:on={previewView === 'ascii'}
-                onclick={() => (previewView = 'ascii')}
-              >ASCII</button>
-            </div>
-
-            {#if previewView === 'svg'}
               {#if previewUrl}
                 <CompareSlider
                   originalUrl={previewUrl}
