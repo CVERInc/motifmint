@@ -73,7 +73,14 @@
   import { History } from '~/lib/history';
   import { detectBackgroundColor, type PathBox } from '~/lib/background';
   import { applyEffects, type EffectOptions } from '~/lib/effects';
-  import { imageToAscii, type AsciiColor, type AsciiMode, TERMINAL_CELL_ASPECT } from '~/lib/ascii';
+  import {
+    imageToAscii,
+    strokeToAscii,
+    type AsciiColor,
+    type AsciiMode,
+    TERMINAL_CELL_ASPECT,
+  } from '~/lib/ascii';
+  import { sampleSvgStrokes } from '~/lib/ascii-stroke-dom';
   import { previewView, hasImage } from '~/lib/view-store';
   import { buildSizeSet, DEFAULT_SCALES } from '~/lib/export-set';
   import {
@@ -1143,9 +1150,27 @@
     });
   }
 
+  // Vector mode: sample the composed SVG's path geometry and draw the centreline
+  // as connected box-drawing art — no rasterise step. Sync (DOM parse); cheap
+  // enough behind the preview debounce. Returns '' when there's nothing to draw.
+  function vectorAscii(color: AsciiColor): string | null {
+    const finalSvg = buildFinalSvg();
+    if (!finalSvg) return null;
+    const s = sampleSvgStrokes(finalSvg, asciiCols, TERMINAL_CELL_ASPECT);
+    if (!s) return '';
+    return strokeToAscii(s.polylines, {
+      cols: s.cols,
+      rows: s.rows,
+      color,
+      rounded: asciiRounded,
+      strokeColor: { r: 0, g: 0, b: 0 },
+    });
+  }
+
   /** Build the ASCII rendering for EXPORT (copy / .txt / .ans) — same bytes the
    *  preview shows. */
   async function buildAsciiText(color: AsciiColor = 'none'): Promise<string | null> {
+    if (isVector) return vectorAscii(color);
     const id = await buildAsciiData();
     return id ? asciiFrom(id, color) : null;
   }
@@ -1212,21 +1237,37 @@
   let asciiBusy = $state(false);
   let asciiSeq = 0;
   let lastAsciiSig = ''; // inputs that produced the current asciiArt
-  // ASCII style = fill method. The three ramp styles drive the density-glyph
-  // renderer (`ramp` mode); braille/halfblock/edge are the smoother sub-cell and
-  // contour modes. One picker, mapped to imageToAscii's {mode, ramp}.
-  type AsciiStyle = 'standard' | 'blocks' | 'detailed' | 'braille' | 'halfblock' | 'edge';
+  // ASCII style = fill method. The ramp styles drive the density-glyph renderer
+  // (`ramp` mode); braille/halfblock/edge are the smoother raster modes; `vector`
+  // is the standalone stroke renderer that samples the SVG geometry directly
+  // (strokeToAscii) instead of a rasterised buffer. One picker maps to all of it.
+  type AsciiStyle =
+    | 'standard'
+    | 'blocks'
+    | 'detailed'
+    | 'braille'
+    | 'halfblock'
+    | 'edge'
+    | 'vector';
   let asciiStyle = $state<AsciiStyle>('standard');
+  // The vector path doesn't go through imageToAscii — it samples paths directly.
+  const isVector = $derived(asciiStyle === 'vector');
   const asciiMode = $derived<AsciiMode>(
     asciiStyle === 'braille' || asciiStyle === 'halfblock' || asciiStyle === 'edge'
       ? asciiStyle
       : 'ramp',
   );
   // Ramp name only matters in 'ramp' mode; harmless default otherwise.
-  const asciiRamp = $derived(asciiMode === 'ramp' ? (asciiStyle as string) : 'standard');
-  // Seam-fill only the solid-block tilers (█ and ▀▄█); braille is discrete dots
-  // that read best crisp, and edge strokes are sparse — dilating them muddies.
-  const asciiTight = $derived(asciiStyle === 'blocks' || asciiStyle === 'halfblock');
+  const asciiRamp = $derived(
+    asciiMode === 'ramp' && !isVector ? (asciiStyle as string) : 'standard',
+  );
+  // Seam-fill the tilers/connected line art so glyphs touch across the stretched
+  // preview line box: solid blocks (█ ▀▄█) and the box-drawing vector strokes.
+  // Braille dots and sparse edge strokes read best crisp, so leave them be.
+  const asciiTight = $derived(
+    asciiStyle === 'blocks' || asciiStyle === 'halfblock' || asciiStyle === 'vector',
+  );
+  let asciiRounded = $state(true); // vector: rounded corners (╭╮╯╰) vs sharp (┌┐└┘)
   let asciiInvert = $state(false);
   let asciiColor = $state(false); // keep each glyph's source colour (web + ANSI)
   // Measured advance ratio (glyph width ÷ font-size) of the preview's monospace
@@ -1260,6 +1301,7 @@
       displaySvg,
       asciiCols,
       asciiStyle,
+      asciiRounded,
       asciiInvert,
       asciiColor,
       backdrop.color,
@@ -1273,10 +1315,17 @@
     const wantColor = asciiColor;
     asciiBusy = true;
     const timer = setTimeout(async () => {
-      const id = await buildAsciiData();
-      if (seq !== asciiSeq) return;
-      asciiArt = id ? asciiFrom(id, 'none') : '';
-      asciiHtml = id && wantColor ? asciiFrom(id, 'html') : '';
+      if (isVector) {
+        const plain = vectorAscii('none');
+        if (seq !== asciiSeq) return;
+        asciiArt = plain ?? '';
+        asciiHtml = wantColor ? (vectorAscii('html') ?? '') : '';
+      } else {
+        const id = await buildAsciiData();
+        if (seq !== asciiSeq) return;
+        asciiArt = id ? asciiFrom(id, 'none') : '';
+        asciiHtml = id && wantColor ? asciiFrom(id, 'html') : '';
+      }
       lastAsciiSig = sig;
       asciiBusy = false;
     }, 120);
@@ -2435,12 +2484,22 @@
                         <option value="halfblock">Half-block ▀ (2-colour)</option>
                         <option value="edge">Edge ╱ (outline)</option>
                       </optgroup>
+                      <optgroup label="Vector">
+                        <option value="vector">Stroke ╭╮ (path-traced)</option>
+                      </optgroup>
                     </select>
                   </label>
-                  <label class="ascii-opt">
-                    <input type="checkbox" bind:checked={asciiInvert} />
-                    <span>Invert</span>
-                  </label>
+                  {#if isVector}
+                    <label class="ascii-opt">
+                      <input type="checkbox" bind:checked={asciiRounded} />
+                      <span>Rounded</span>
+                    </label>
+                  {:else}
+                    <label class="ascii-opt">
+                      <input type="checkbox" bind:checked={asciiInvert} />
+                      <span>Invert</span>
+                    </label>
+                  {/if}
                   <label class="ascii-opt">
                     <input type="checkbox" bind:checked={asciiColor} />
                     <span>Color</span>

@@ -479,3 +479,179 @@ export function imageToAscii(
   if (color === 'ansi') return serializeAnsi(grid);
   return serializePlain(grid);
 }
+
+// ── Vector-stroke renderer ──────────────────────────────────────────────────
+//
+// The `edge` mode above *guesses* contours by running Sobel on a rasterised
+// mark. When you have the real vector — as an icon studio does — you can do
+// better: sample the actual path geometry and draw the centreline as a
+// connected line. Each cell's glyph is chosen by which neighbouring cells the
+// line also passes through (box-drawing connectivity), so turns become real
+// corners (rounded ╭╮╯╰) and diagonals become smooth rounded staircases rather
+// than a field of ╱╲ that never quite join up.
+//
+// This half is pure: it takes polylines already projected into grid space
+// (x∈[0,cols], y∈[0,rows]) and returns the same Cell[][] the serializers eat.
+// The browser-only part — turning an <svg>'s paths into those polylines via
+// getPointAtLength — lives in the component, thin and untested by design.
+
+/** One sampled point along a path, in grid space. Optional colour is the source
+ *  stroke/fill at that point; cells average the points that fall in them. */
+export interface StrokePoint {
+  x: number;
+  y: number;
+  r?: number;
+  g?: number;
+  b?: number;
+}
+
+export interface StrokeOptions {
+  cols: number;
+  rows: number;
+  /** Colour carrier, as in {@link AsciiOptions}. Defaults to 'none'. */
+  color?: AsciiColor;
+  /** Rounded corners (╭╮╯╰) vs sharp (┌┐└┘). Defaults to true. */
+  rounded?: boolean;
+  /** Colour for points (and the whole stroke in mono) that carry none. */
+  strokeColor?: { r: number; g: number; b: number };
+}
+
+// Connectivity bits: which orthogonal neighbour a cell's line links to.
+const DIR_U = 1;
+const DIR_D = 2;
+const DIR_L = 4;
+const DIR_R = 8;
+
+/** Box-drawing glyph for a connectivity mask. */
+function strokeGlyph(mask: number, rounded: boolean): string {
+  switch (mask) {
+    case DIR_L | DIR_R:
+      return '─';
+    case DIR_U | DIR_D:
+      return '│';
+    case DIR_D | DIR_R:
+      return rounded ? '╭' : '┌';
+    case DIR_D | DIR_L:
+      return rounded ? '╮' : '┐';
+    case DIR_U | DIR_R:
+      return rounded ? '╰' : '└';
+    case DIR_U | DIR_L:
+      return rounded ? '╯' : '┘';
+    case DIR_U | DIR_D | DIR_R:
+      return '├';
+    case DIR_U | DIR_D | DIR_L:
+      return '┤';
+    case DIR_L | DIR_R | DIR_D:
+      return '┬';
+    case DIR_L | DIR_R | DIR_U:
+      return '┴';
+    case DIR_U | DIR_D | DIR_L | DIR_R:
+      return '┼';
+    case DIR_U:
+      return '╵';
+    case DIR_D:
+      return '╷';
+    case DIR_L:
+      return '╴';
+    case DIR_R:
+      return '╶';
+    default:
+      return '·'; // isolated occupied cell (a lone sample)
+  }
+}
+
+/**
+ * Rasterise vector polylines (grid space) to ASCII line art via box-drawing
+ * connectivity. Returns the serialized string for the chosen colour carrier.
+ */
+export function strokeToAscii(polylines: StrokePoint[][], options: StrokeOptions): string {
+  const cols = Math.max(1, Math.floor(options.cols));
+  const rows = Math.max(1, Math.floor(options.rows));
+  const rounded = options.rounded ?? true;
+  const color = options.color ?? 'none';
+  const stroke = options.strokeColor ?? { r: 0, g: 0, b: 0 };
+
+  const n = cols * rows;
+  const mask = new Int32Array(n);
+  const occupied = new Uint8Array(n);
+  const rAcc = new Float64Array(n);
+  const gAcc = new Float64Array(n);
+  const bAcc = new Float64Array(n);
+  const cnt = new Int32Array(n);
+  const idx = (cx: number, cy: number) => cy * cols + cx;
+  const inB = (cx: number, cy: number) => cx >= 0 && cx < cols && cy >= 0 && cy < rows;
+
+  // Record that two orthogonally-adjacent cells are joined by the line.
+  const link = (ax: number, ay: number, bx: number, by: number) => {
+    const dx = bx - ax;
+    const dy = by - ay;
+    if (Math.abs(dx) + Math.abs(dy) !== 1) return; // only orthogonal neighbours
+    const aBit = dx === 1 ? DIR_R : dx === -1 ? DIR_L : dy === 1 ? DIR_D : DIR_U;
+    const bBit = dx === 1 ? DIR_L : dx === -1 ? DIR_R : dy === 1 ? DIR_U : DIR_D;
+    if (inB(ax, ay)) mask[idx(ax, ay)] |= aBit;
+    if (inB(bx, by)) mask[idx(bx, by)] |= bBit;
+  };
+
+  // Walk cell→cell orthogonally; diagonals become an L (staircase) so corners form.
+  const connect = (ax: number, ay: number, bx: number, by: number) => {
+    let x = ax;
+    let y = ay;
+    let guard = 0;
+    while ((x !== bx || y !== by) && guard++ < 4 * (cols + rows)) {
+      const sx = Math.sign(bx - x);
+      const sy = Math.sign(by - y);
+      if (sx !== 0) {
+        link(x, y, x + sx, y); // step horizontally first
+        x += sx;
+      } else if (sy !== 0) {
+        link(x, y, x, y + sy);
+        y += sy;
+      }
+    }
+  };
+
+  for (const pl of polylines) {
+    let pcx: number | null = null;
+    let pcy = 0;
+    for (const p of pl) {
+      const cx = Math.floor(p.x);
+      const cy = Math.floor(p.y);
+      if (inB(cx, cy)) {
+        const i = idx(cx, cy);
+        occupied[i] = 1;
+        rAcc[i] += p.r ?? stroke.r;
+        gAcc[i] += p.g ?? stroke.g;
+        bAcc[i] += p.b ?? stroke.b;
+        cnt[i]++;
+      }
+      if (pcx !== null && (cx !== pcx || cy !== pcy)) connect(pcx, pcy, cx, cy);
+      pcx = cx;
+      pcy = cy;
+    }
+  }
+
+  const grid: Cell[][] = [];
+  for (let cy = 0; cy < rows; cy++) {
+    const row: Cell[] = [];
+    for (let cx = 0; cx < cols; cx++) {
+      const i = idx(cx, cy);
+      if (!occupied[i] && mask[i] === 0) {
+        row.push({ ch: ' ', r: 0, g: 0, b: 0 });
+        continue;
+      }
+      const ch = strokeGlyph(mask[i], rounded);
+      const c = cnt[i];
+      row.push({
+        ch,
+        r: c ? rAcc[i] / c : stroke.r,
+        g: c ? gAcc[i] / c : stroke.g,
+        b: c ? bAcc[i] / c : stroke.b,
+      });
+    }
+    grid.push(row);
+  }
+
+  if (color === 'html') return serializeHtml(grid);
+  if (color === 'ansi') return serializeAnsi(grid);
+  return serializePlain(grid);
+}

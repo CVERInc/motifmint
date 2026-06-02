@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { ASCII_RAMPS, imageToAscii, type AsciiOptions } from './ascii';
+import {
+  ASCII_RAMPS,
+  imageToAscii,
+  strokeToAscii,
+  type AsciiOptions,
+  type StrokePoint,
+} from './ascii';
 
 // Build a w×h RGBA buffer from a per-pixel callback.
 function img(w: number, h: number, px: (x: number, y: number) => [number, number, number, number]) {
@@ -230,5 +236,72 @@ describe('mode: edge', () => {
     const data = img(16, 16, () => [0, 0, 0, 255]);
     const out = imageToAscii(data, 16, 16, { cols: 16, charAspect: 1, mode: 'edge' });
     expect(out.replace(/\n/g, '').trim()).toBe('');
+  });
+});
+
+describe('strokeToAscii (vector)', () => {
+  // Sample a straight segment from a→b into many grid-space points.
+  function seg(a: [number, number], b: [number, number], steps = 40): StrokePoint[] {
+    const pts: StrokePoint[] = [];
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      pts.push({ x: a[0] + (b[0] - a[0]) * t, y: a[1] + (b[1] - a[1]) * t });
+    }
+    return pts;
+  }
+  const o = (rounded = true) => ({ cols: 8, rows: 8, rounded });
+
+  it('a horizontal segment is a run of ─ (with stub ends ╶ ╴)', () => {
+    const out = strokeToAscii([seg([0.5, 3.5], [7.5, 3.5])], o());
+    const line = out.split('\n').find((l) => l.includes('─'))!;
+    // Only horizontal connectors — interior ─, the two ends are half-line stubs.
+    expect([...line].every((c) => c === '─' || c === '╶' || c === '╴')).toBe(true);
+    expect(line.length).toBeGreaterThanOrEqual(7);
+  });
+
+  it('a vertical segment is a run of │ (with stub ends ╵ ╷)', () => {
+    const out = strokeToAscii([seg([3.5, 0.5], [3.5, 7.5])], o());
+    const inked = out
+      .split('\n')
+      .flatMap((l) => [...l.trimEnd()])
+      .filter((c) => c !== ' ');
+    expect(inked.length).toBeGreaterThanOrEqual(7);
+    expect(inked.every((c) => c === '│' || c === '╵' || c === '╷')).toBe(true);
+    expect(inked.includes('│')).toBe(true);
+  });
+
+  it('an L (right then down) turns the corner with ╮ (rounded)', () => {
+    // Right along row 1, then down column 6.
+    const path = [...seg([0.5, 1.5], [6.5, 1.5]), ...seg([6.5, 1.5], [6.5, 6.5])];
+    const out = strokeToAscii([path], o(true));
+    expect(out).toContain('╮'); // down+left corner at the bend
+    expect(out).toContain('─');
+    expect(out).toContain('│');
+    expect(out).not.toContain('┐'); // rounded, not sharp
+  });
+
+  it('sharp mode uses ┐ instead of ╮', () => {
+    const path = [...seg([0.5, 1.5], [6.5, 1.5]), ...seg([6.5, 1.5], [6.5, 6.5])];
+    const out = strokeToAscii([path], o(false));
+    expect(out).toContain('┐');
+    expect(out).not.toContain('╮');
+  });
+
+  it('a 4-way crossing yields ┼', () => {
+    const h = seg([0.5, 3.5], [7.5, 3.5]);
+    const v = seg([3.5, 0.5], [3.5, 7.5]);
+    const out = strokeToAscii([h, v], o());
+    expect(out).toContain('┼');
+  });
+
+  it('carries per-point colour into HTML spans', () => {
+    const pts = seg([0.5, 3.5], [7.5, 3.5]).map((p) => ({ ...p, r: 255, g: 0, b: 0 }));
+    const out = strokeToAscii([pts], { ...o(), color: 'html' });
+    expect(out).toContain('color:#ff0000');
+    expect(out).toContain('─');
+  });
+
+  it('empty input renders nothing', () => {
+    expect(strokeToAscii([], o()).replace(/\n/g, '').trim()).toBe('');
   });
 });
