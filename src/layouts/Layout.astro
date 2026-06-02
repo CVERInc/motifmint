@@ -27,8 +27,10 @@ const canonical = ogUrl;
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="generator" content={Astro.generator} />
+    {/* bleedblend/auto — zero-config Safari chrome tinting (status bar + URL bar) */}
+    <script>import 'bleedblend/auto';</script>
     <meta name="description" content={description} />
     <title>{title}</title>
     <link rel="canonical" href={canonical} />
