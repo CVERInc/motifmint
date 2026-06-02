@@ -129,3 +129,106 @@ describe('imageToAscii', () => {
     expect(out).not.toContain('\x1b');
   });
 });
+
+describe('mode: braille', () => {
+  // A solid black cell → all 8 dots set → the full braille block U+28FF (⣿).
+  it('packs 8 sub-samples; a solid cell is the full block ⣿', () => {
+    const data = img(8, 8, () => [0, 0, 0, 255]);
+    const out = imageToAscii(data, 8, 8, { cols: 2, charAspect: 1, mode: 'braille' });
+    expect([...out].every((c) => c === '⣿' || c === '\n')).toBe(true);
+  });
+
+  it('an empty (white) image is all spaces, trimmed away', () => {
+    const data = img(8, 8, () => [255, 255, 255, 255]);
+    const out = imageToAscii(data, 8, 8, { cols: 2, charAspect: 1, mode: 'braille' });
+    expect(out.replace(/\n/g, '')).toBe('');
+  });
+
+  it('resolves sub-cell detail a ramp cell would average away', () => {
+    // Left dot-column of each cell black, right white → only left dots fire.
+    // One braille cell spans 2 source px wide, so x<1 within each pair is "left".
+    const data = img(4, 4, (x) => (x % 2 === 0 ? [0, 0, 0, 255] : [255, 255, 255, 255]));
+    const out = imageToAscii(data, 4, 4, { cols: 2, charAspect: 1, mode: 'braille' });
+    // Left dots only = bits 0x01|0x02|0x04|0x40 = 0x47 → U+2847 (⡇).
+    expect(out.split('\n')[0][0]).toBe('⡇');
+  });
+
+  it('transparent pixels leave their dots unset (silhouette preserved)', () => {
+    const data = img(4, 4, (x) => (x < 2 ? [0, 0, 0, 255] : [0, 0, 0, 0]));
+    const lines = imageToAscii(data, 4, 4, { cols: 2, charAspect: 1, mode: 'braille' }).split('\n');
+    // Right half transparent → its cell trims away, leaving one full block.
+    expect(lines.every((l) => l === '⣿')).toBe(true);
+  });
+});
+
+describe('mode: halfblock', () => {
+  it('mono: top-only ink is ▀, bottom-only is ▄, both is █', () => {
+    const top = img(2, 2, (_x, y) => (y < 1 ? [0, 0, 0, 255] : [255, 255, 255, 255]));
+    const bot = img(2, 2, (_x, y) => (y < 1 ? [255, 255, 255, 255] : [0, 0, 0, 255]));
+    const full = img(2, 2, () => [0, 0, 0, 255]);
+    const o = { cols: 2, charAspect: 0.5, mode: 'halfblock' as const }; // 1 row, split 2
+    expect(imageToAscii(top, 2, 2, o).replace(/\n/g, '')).toBe('▀▀');
+    expect(imageToAscii(bot, 2, 2, o).replace(/\n/g, '')).toBe('▄▄');
+    expect(imageToAscii(full, 2, 2, o).replace(/\n/g, '')).toBe('██');
+  });
+
+  it('coloured: ▀ carries top as foreground and bottom as background', () => {
+    // Top red, bottom blue → one ▀ with fg=red, bg=blue.
+    const data = img(2, 2, (_x, y) => (y < 1 ? [255, 0, 0, 255] : [0, 0, 255, 255]));
+    const out = imageToAscii(data, 2, 2, {
+      cols: 2,
+      charAspect: 0.5,
+      mode: 'halfblock',
+      color: 'html',
+    });
+    expect(out).toContain('color:#ff0000');
+    expect(out).toContain('background:#0000ff');
+    expect(out).toContain('▀');
+  });
+
+  it('coloured ansi: emits both 38;2 fg and 48;2 bg, then resets', () => {
+    const data = img(2, 2, (_x, y) => (y < 1 ? [255, 0, 0, 255] : [0, 0, 255, 255]));
+    const out = imageToAscii(data, 2, 2, {
+      cols: 2,
+      charAspect: 0.5,
+      mode: 'halfblock',
+      color: 'ansi',
+    });
+    expect(out).toContain('\x1b[38;2;255;0;0m');
+    expect(out).toContain('\x1b[48;2;0;0;255m');
+    expect(out.endsWith('\x1b[0m')).toBe(true);
+  });
+});
+
+describe('mode: edge', () => {
+  // A 16×16 split image; the contour runs along the colour boundary.
+  function split(w: number, h: number, dark: (x: number, y: number) => boolean) {
+    return img(w, h, (x, y) => (dark(x, y) ? [0, 0, 0, 255] : [255, 255, 255, 255]));
+  }
+
+  it('a vertical boundary draws a vertical stroke │', () => {
+    const data = split(16, 16, (x) => x < 8);
+    const out = imageToAscii(data, 16, 16, { cols: 16, charAspect: 1, mode: 'edge' });
+    expect(out).toContain('│');
+    expect(out).not.toContain('─');
+  });
+
+  it('a horizontal boundary draws a horizontal stroke ─', () => {
+    const data = split(16, 16, (_x, y) => y < 8);
+    const out = imageToAscii(data, 16, 16, { cols: 16, charAspect: 1, mode: 'edge' });
+    expect(out).toContain('─');
+    expect(out).not.toContain('│');
+  });
+
+  it('a top-left/bottom-right boundary draws a diagonal stroke', () => {
+    const data = split(16, 16, (x, y) => x + y < 16); // dark top-left triangle
+    const out = imageToAscii(data, 16, 16, { cols: 16, charAspect: 1, mode: 'edge' });
+    expect(out.includes('╱') || out.includes('╲')).toBe(true);
+  });
+
+  it('a flat (solid) field draws nothing — no spurious strokes', () => {
+    const data = img(16, 16, () => [0, 0, 0, 255]);
+    const out = imageToAscii(data, 16, 16, { cols: 16, charAspect: 1, mode: 'edge' });
+    expect(out.replace(/\n/g, '').trim()).toBe('');
+  });
+});

@@ -73,7 +73,7 @@
   import { History } from '~/lib/history';
   import { detectBackgroundColor, type PathBox } from '~/lib/background';
   import { applyEffects, type EffectOptions } from '~/lib/effects';
-  import { imageToAscii, type AsciiColor, TERMINAL_CELL_ASPECT } from '~/lib/ascii';
+  import { imageToAscii, type AsciiColor, type AsciiMode, TERMINAL_CELL_ASPECT } from '~/lib/ascii';
   import { previewView, hasImage } from '~/lib/view-store';
   import { buildSizeSet, DEFAULT_SCALES } from '~/lib/export-set';
   import {
@@ -1136,6 +1136,7 @@
     return imageToAscii(id.data, id.width, id.height, {
       cols: asciiCols,
       charAspect: TERMINAL_CELL_ASPECT,
+      mode: asciiMode,
       ramp: asciiRamp,
       invert: asciiInvert,
       color,
@@ -1211,7 +1212,21 @@
   let asciiBusy = $state(false);
   let asciiSeq = 0;
   let lastAsciiSig = ''; // inputs that produced the current asciiArt
-  let asciiRamp = $state<'standard' | 'blocks' | 'detailed'>('standard');
+  // ASCII style = fill method. The three ramp styles drive the density-glyph
+  // renderer (`ramp` mode); braille/halfblock/edge are the smoother sub-cell and
+  // contour modes. One picker, mapped to imageToAscii's {mode, ramp}.
+  type AsciiStyle = 'standard' | 'blocks' | 'detailed' | 'braille' | 'halfblock' | 'edge';
+  let asciiStyle = $state<AsciiStyle>('standard');
+  const asciiMode = $derived<AsciiMode>(
+    asciiStyle === 'braille' || asciiStyle === 'halfblock' || asciiStyle === 'edge'
+      ? asciiStyle
+      : 'ramp',
+  );
+  // Ramp name only matters in 'ramp' mode; harmless default otherwise.
+  const asciiRamp = $derived(asciiMode === 'ramp' ? (asciiStyle as string) : 'standard');
+  // Seam-fill only the solid-block tilers (█ and ▀▄█); braille is discrete dots
+  // that read best crisp, and edge strokes are sparse — dilating them muddies.
+  const asciiTight = $derived(asciiStyle === 'blocks' || asciiStyle === 'halfblock');
   let asciiInvert = $state(false);
   let asciiColor = $state(false); // keep each glyph's source colour (web + ANSI)
   // Measured advance ratio (glyph width ÷ font-size) of the preview's monospace
@@ -1244,7 +1259,7 @@
     const sig = [
       displaySvg,
       asciiCols,
-      asciiRamp,
+      asciiStyle,
       asciiInvert,
       asciiColor,
       backdrop.color,
@@ -2408,11 +2423,18 @@
                     <span class="value">{asciiCols} cols</span>
                   </label>
                   <label class="ascii-opt">
-                    <span>Charset</span>
-                    <select bind:value={asciiRamp} aria-label="ASCII character set">
-                      <option value="standard">Standard</option>
-                      <option value="blocks">Blocks</option>
-                      <option value="detailed">Detailed</option>
+                    <span>Style</span>
+                    <select bind:value={asciiStyle} aria-label="ASCII fill style">
+                      <optgroup label="Density ramp">
+                        <option value="standard">Standard</option>
+                        <option value="blocks">Blocks</option>
+                        <option value="detailed">Detailed</option>
+                      </optgroup>
+                      <optgroup label="Smooth">
+                        <option value="braille">Braille ⣿ (2×4)</option>
+                        <option value="halfblock">Half-block ▀ (2-colour)</option>
+                        <option value="edge">Edge ╱ (outline)</option>
+                      </optgroup>
                     </select>
                   </label>
                   <label class="ascii-opt">
@@ -2472,7 +2494,7 @@
                     ascii={asciiArt}
                     asciiHtml={asciiColor ? asciiHtml : undefined}
                     lineHeight={previewLineHeight}
-                    tight={asciiRamp === 'blocks'}
+                    tight={asciiTight}
                     busy={asciiBusy}
                   />
                 {:else if asciiColor && asciiHtml}
@@ -2480,14 +2502,14 @@
                   <pre
                     class="ascii-preview big"
                     class:busy={asciiBusy}
-                    class:tight={asciiRamp === 'blocks'}
+                    class:tight={asciiTight}
                     style:line-height={previewLineHeight}
                     aria-label="ASCII preview">{@html asciiHtml}</pre>
                 {:else}
                   <pre
                     class="ascii-preview big"
                     class:busy={asciiBusy}
-                    class:tight={asciiRamp === 'blocks'}
+                    class:tight={asciiTight}
                     style:line-height={previewLineHeight}
                     aria-label="ASCII preview">{asciiArt || '…'}</pre>
                 {/if}
