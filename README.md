@@ -9,7 +9,7 @@
 
 **Live demo:** [oss.cver.net/motifmint](https://oss.cver.net/motifmint/) · **License:** MIT · **No server, no upload, no signup**
 
-🌐 日本語・繁體中文の紹介は [cver.net/oss/motifmint](https://cver.net/oss/motifmint) へ。
+🌐 日本語の紹介 → [cver.net/ja-jp/oss/motifmint](https://cver.net/ja-jp/oss/motifmint) ・ 繁體中文介紹 → [cver.net/zh-tw/oss/motifmint](https://cver.net/zh-tw/oss/motifmint)
 
 ---
 
