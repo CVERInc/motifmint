@@ -4,7 +4,7 @@ import wasm from 'vite-plugin-wasm';
 
 export default defineConfig({
   site: 'https://oss.cver.net',
-  base: '/markmint',
+  base: '/motifmint',
   integrations: [svelte()],
   vite: {
     plugins: [wasm()],

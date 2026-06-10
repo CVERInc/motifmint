@@ -37,7 +37,7 @@ For convert quality bugs, this is essential.
 
 - OS:
 - Browser:
-- markmint version / commit:
+- motifmint version / commit:
 - Online demo, or self-hosted?
 
 ### Console errors

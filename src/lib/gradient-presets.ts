@@ -4,7 +4,7 @@
  */
 import type { GradientSpec } from './gradient';
 
-const STORAGE_KEY = 'markmint:gradient-presets';
+const STORAGE_KEY = 'motifmint:gradient-presets';
 
 export interface SavedGradient {
   name: string;

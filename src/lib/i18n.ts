@@ -1,5 +1,5 @@
 /**
- * Tiny i18n layer for the markmint tool UI.
+ * Tiny i18n layer for the motifmint tool UI.
  *
  * Design goals (kept deliberately small — no runtime dep):
  *   • A flat `TRANSLATIONS` dict keyed by locale, then by message key.
@@ -29,7 +29,7 @@ export const LOCALE_LABELS: Record<Locale, string> = {
 export const DEFAULT_LOCALE: Locale = 'en-US';
 
 const en = {
-  'hero.title': 'markmint',
+  'hero.title': 'motifmint',
   'hero.tagline':
     'Turn any image into a clean, recolorable SVG logo or icon — in your browser. No upload, no signup, open source.',
 
@@ -70,7 +70,7 @@ export type MessageKey = keyof typeof en;
 type Dict = Record<MessageKey, string>;
 
 const ja: Dict = {
-  'hero.title': 'markmint',
+  'hero.title': 'motifmint',
   'hero.tagline':
     'どんな画像も、きれいで色を変えられる SVG ロゴ・アイコンに — ブラウザだけで。アップロード不要、登録不要、オープンソース。',
 
@@ -109,7 +109,7 @@ const ja: Dict = {
 
 // 繁體中文 (Traditional Chinese) — Taiwan. Never Simplified.
 const zhTW: Dict = {
-  'hero.title': 'markmint',
+  'hero.title': 'motifmint',
   'hero.tagline':
     '把任何圖片變成乾淨、可重新上色的 SVG 標誌或圖示 — 全程在瀏覽器內完成。免上傳、免註冊、開源。',
 
@@ -146,7 +146,7 @@ const zhTW: Dict = {
 };
 
 const es: Dict = {
-  'hero.title': 'markmint',
+  'hero.title': 'motifmint',
   'hero.tagline':
     'Convierte cualquier imagen en un logo o icono SVG limpio y recoloreable — en tu navegador. Sin subidas, sin registro, código abierto.',
 

@@ -1,5 +1,5 @@
 /**
- * Conservative service worker for markmint (offline / installable).
+ * Conservative service worker for motifmint (offline / installable).
  *
  * Strategy, chosen to never serve a stale app:
  *   • content-hashed build assets (…/_astro/…) → cache-first (immutable)
@@ -7,7 +7,7 @@
  *     cache only when offline
  * Old caches are purged on activate. Bump CACHE_VERSION to force a refresh.
  */
-const CACHE_VERSION = 'markmint-v1';
+const CACHE_VERSION = 'motifmint-v1';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

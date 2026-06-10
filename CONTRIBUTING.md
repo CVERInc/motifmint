@@ -1,4 +1,4 @@
-# Contributing to markmint
+# Contributing to motifmint
 
 Issues, pull requests, translations — all welcome.
 
@@ -12,7 +12,7 @@ Issues, pull requests, translations — all welcome.
 
 | Type | How |
 |---|---|
-| Bug reports | Open an [Issue](https://github.com/CVERInc/markmint/issues), include a reproducible image or steps |
+| Bug reports | Open an [Issue](https://github.com/CVERInc/motifmint/issues), include a reproducible image or steps |
 | Feature requests | Discuss in an Issue first if non-trivial |
 | Translations | PR — see [Adding a new language](#-adding-a-new-language) |
 | New presets | PR — see [Adding a new preset](#-adding-a-new-preset) |
@@ -23,8 +23,8 @@ Issues, pull requests, translations — all welcome.
 Requires Node.js 18+.
 
 ```bash
-git clone https://github.com/CVERInc/markmint.git
-cd markmint
+git clone https://github.com/CVERInc/motifmint.git
+cd motifmint
 npm install
 npm run dev       # http://localhost:4321
 npm run check     # type-check
@@ -95,7 +95,7 @@ Do **not** open a public issue for security reports. See
 
 | 種類 | 方法 |
 |---|---|
-| バグ報告 | [Issue](https://github.com/CVERInc/markmint/issues) を作成、再現可能な画像 / 手順を添える |
+| バグ報告 | [Issue](https://github.com/CVERInc/motifmint/issues) を作成、再現可能な画像 / 手順を添える |
 | 機能提案 | 大きい変更は事前に Issue で議論 |
 | 翻訳 | PR — [新言語の追加](#-新言語の追加) を参照 |
 | 新プリセット | PR — [新プリセットの追加](#-新プリセットの追加) を参照 |
@@ -106,8 +106,8 @@ Do **not** open a public issue for security reports. See
 Node.js 18+ が必要です。
 
 ```bash
-git clone https://github.com/CVERInc/markmint.git
-cd markmint
+git clone https://github.com/CVERInc/motifmint.git
+cd motifmint
 npm install
 npm run dev       # http://localhost:4321
 npm run check     # 型チェック

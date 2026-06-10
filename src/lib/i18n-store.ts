@@ -19,7 +19,7 @@ import {
   type MessageKey,
 } from './i18n';
 
-const STORAGE_KEY = 'markmint:locale';
+const STORAGE_KEY = 'motifmint:locale';
 
 // Migrate values persisted before the move to full BCP-47 tags, so a returning
 // user keeps the language they picked instead of silently resetting.

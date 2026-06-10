@@ -66,7 +66,7 @@ describe('gradient-presets', () => {
   });
 
   it('drops malformed entries on load', () => {
-    localStorage.setItem('markmint:gradient-presets', JSON.stringify([{ name: 'x' }, 42]));
+    localStorage.setItem('motifmint:gradient-presets', JSON.stringify([{ name: 'x' }, 42]));
     expect(loadGradientPresets()).toEqual([]);
   });
 });

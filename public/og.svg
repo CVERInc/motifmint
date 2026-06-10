@@ -13,7 +13,7 @@
   <rect width="1200" height="630" fill="url(#g1)"/>
   <rect width="1200" height="630" fill="url(#g2)"/>
   <g font-family="'Comfortaa','Nunito',system-ui,sans-serif">
-    <text x="100" y="300" font-size="104" font-weight="700" fill="#f5fbfa" letter-spacing="-3">markmint</text>
+    <text x="100" y="300" font-size="104" font-weight="700" fill="#f5fbfa" letter-spacing="-3">motifmint</text>
     <text x="104" y="370" font-size="38" font-weight="400" fill="#aceace">in-browser logo &amp; icon studio</text>
     <text x="104" y="430" font-size="28" font-weight="400" fill="rgba(245,251,250,0.6)">Trace · recolor · compose · export — no upload, open source</text>
   </g>

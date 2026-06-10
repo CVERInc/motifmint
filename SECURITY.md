@@ -12,7 +12,7 @@ within **30 days** of acknowledgement for confirmed vulnerabilities.
 
 ## Threat model
 
-`markmint` is a static, client-side web application. There is no server
+`motifmint` is a static, client-side web application. There is no server
 component, no authentication, and no user data is transmitted. The threat
 surface is therefore narrow but not zero:
 

@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-`markmint` depends on the following open-source projects. Their licenses
+`motifmint` depends on the following open-source projects. Their licenses
 apply to portions of the distributed bundle.
 
 ---
@@ -57,5 +57,5 @@ apply to portions of the distributed bundle.
 ---
 
 The full text of each license is available in the upstream repositories
-linked above. If you redistribute `markmint` (e.g. a fork or a hosted
+linked above. If you redistribute `motifmint` (e.g. a fork or a hosted
 instance), please retain this file.

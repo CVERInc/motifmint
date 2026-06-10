@@ -8,7 +8,7 @@ interface Props {
 }
 
 const {
-  title = 'markmint — turn images into clean SVG logos & icons',
+  title = 'motifmint — turn images into clean SVG logos & icons',
   description = 'Turn PNG, JPG, WebP into clean, recolorable SVG logos and icons — in your browser. Open source, MIT-licensed, no upload required.',
 } = Astro.props;
 
@@ -16,7 +16,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 // CVER logo as favicon — consistent across all cver.net OSS pages.
 const iconSmall = `${base}/cver-logo-small.png`;
 const iconLarge = `${base}/cver-logo.png`;
-const repo = 'https://github.com/CVERInc/markmint';
+const repo = 'https://github.com/CVERInc/motifmint';
 const siteOrigin = 'https://oss.cver.net';
 const ogImage = `${siteOrigin}${base}/og.svg`;
 const ogUrl = `${siteOrigin}${base}/`;
@@ -42,7 +42,7 @@ const canonical = ogUrl;
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="markmint" />
+    <meta property="og:site_name" content="motifmint" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={ogUrl} />
@@ -62,8 +62,8 @@ const canonical = ogUrl;
   </head>
   <body>
     <header class="site-header">
-      <a href="https://cver.net/oss/markmint" class="brand">
-        <span class="brand-name">markmint</span>
+      <a href="https://cver.net/oss/motifmint" class="brand">
+        <span class="brand-name">motifmint</span>
         <span class="brand-badge">by cver.net</span>
       </a>
       <div class="nav-center">

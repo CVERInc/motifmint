@@ -1,6 +1,6 @@
 import type { TracerParams } from './presets';
 
-const STORAGE_KEY = 'markmint:custom-presets';
+const STORAGE_KEY = 'motifmint:custom-presets';
 
 export interface CustomPreset {
   name: string;
