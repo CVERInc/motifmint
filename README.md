@@ -69,7 +69,7 @@ motifmint:
 **Always**
 - No upload, no signup, **zero telemetry**
 - **Installable PWA**, works offline once loaded
-- Multilingual UI — English / 日本語 / 繁體中文 / Español
+- Landing copy in English / 日本語 / 繁體中文 / Español — the studio's tool UI itself is English for now (full translation is on the [roadmap](#roadmap))
 
 ## Quick start (use online)
 
