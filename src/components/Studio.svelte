@@ -2629,6 +2629,7 @@
   .dropzone {
     border: 1.5px dashed var(--border);
     border-radius: 12px;
+    corner-shape: var(--corner);
     padding: 3rem 1.5rem;
     display: flex;
     flex-direction: column;
@@ -2700,6 +2701,7 @@
     padding: 0.5rem;
     border: 1px solid var(--border);
     border-radius: 10px;
+    corner-shape: var(--corner);
     background: var(--surface);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -2731,6 +2733,7 @@
     padding: 0.875rem;
     border: 1px solid var(--border);
     border-radius: 10px;
+    corner-shape: var(--corner);
     background: var(--surface);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -2799,9 +2802,11 @@
   }
   .seg-buttons button:first-child {
     border-radius: 6px 0 0 6px;
+    corner-shape: var(--corner);
   }
   .seg-buttons button:last-child {
     border-radius: 0 6px 6px 0;
+    corner-shape: var(--corner);
   }
   .seg-buttons button:not(:first-child) {
     margin-left: -1px;
@@ -2827,6 +2832,7 @@
     padding: 0;
     border: 1px solid var(--border);
     border-radius: 6px;
+    corner-shape: var(--corner);
     background: transparent;
     cursor: pointer;
   }
@@ -2837,6 +2843,7 @@
     font-size: 0.75rem;
     border: 1px solid var(--border);
     border-radius: 6px;
+    corner-shape: var(--corner);
     background: var(--bg);
     color: var(--text);
     text-transform: lowercase;
@@ -2876,6 +2883,7 @@
     padding: 0.6rem 0.7rem;
     border: 1px solid var(--border);
     border-radius: 8px;
+    corner-shape: var(--corner);
     background: rgba(255, 255, 255, 0.03);
   }
   .fx-toggle {
@@ -2959,6 +2967,7 @@
     width: 24px;
     height: 24px;
     border-radius: 5px;
+    corner-shape: var(--corner);
     border: 1px solid var(--border);
     cursor: pointer;
     overflow: hidden;
@@ -3017,6 +3026,7 @@
     padding: 0;
     border: 1px solid var(--border);
     border-radius: 6px;
+    corner-shape: var(--corner);
     background: transparent;
     cursor: pointer;
     flex-shrink: 0;
@@ -3036,6 +3046,7 @@
     width: 13px;
     height: 13px;
     border-radius: 3px;
+    corner-shape: var(--corner);
     background: linear-gradient(135deg, #ff6a00, #ee0979);
   }
   .grad-editor {
@@ -3050,6 +3061,7 @@
     width: 22px;
     height: 22px;
     border-radius: 5px;
+    corner-shape: var(--corner);
     border: 1px solid var(--border);
     overflow: hidden;
     cursor: pointer;
@@ -3075,6 +3087,7 @@
     display: inline-flex;
     border: 1px solid var(--border);
     border-radius: 6px;
+    corner-shape: var(--corner);
     overflow: hidden;
   }
   .grad-type button {
@@ -3099,6 +3112,7 @@
     width: 20px;
     height: 20px;
     border-radius: 5px;
+    corner-shape: var(--corner);
     border: 1px solid var(--border);
     padding: 0;
     cursor: pointer;
@@ -3114,6 +3128,7 @@
     width: 20px;
     height: 20px;
     border-radius: 5px;
+    corner-shape: var(--corner);
     border: 1px dashed var(--border);
     background: transparent;
     color: var(--muted);
@@ -3140,6 +3155,7 @@
     padding: 0.2rem 0.5rem;
     border: 1px solid var(--border);
     border-radius: 6px;
+    corner-shape: var(--corner);
     background: transparent;
     color: var(--muted);
     cursor: pointer;
@@ -3176,6 +3192,7 @@
     gap: 0.5rem;
     padding: 0.2rem 0.4rem;
     border-radius: 6px;
+    corner-shape: var(--corner);
     transition: background 0.1s;
   }
   .layer-children li.hovered {
@@ -3201,6 +3218,7 @@
   .advanced {
     border: 1px solid var(--border);
     border-radius: 10px;
+    corner-shape: var(--corner);
     overflow: hidden;
     background: var(--surface);
     backdrop-filter: blur(10px);
@@ -3267,6 +3285,7 @@
     font-size: 0.8125rem;
     border: 1px solid var(--border);
     border-radius: 6px;
+    corner-shape: var(--corner);
     background: var(--bg);
     color: var(--text);
     min-width: 0;
@@ -3344,6 +3363,7 @@
     gap: 0.5rem;
     padding: 0.55rem 1rem;
     border-radius: 8px;
+    corner-shape: var(--corner);
     font-size: 0.875rem;
     font-family: inherit;
     cursor: pointer;
@@ -3380,6 +3400,7 @@
     padding: 0.25rem 0.55rem !important;
     font-size: 0.75rem !important;
     border-radius: 6px !important;
+    corner-shape: var(--corner);
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
@@ -3428,6 +3449,7 @@
     gap: 0.5rem;
     padding: 0.625rem 0.875rem;
     border-radius: 8px;
+    corner-shape: var(--corner);
     background: #fef2f2;
     color: #991b1b;
     border: 1px solid #fecaca;
@@ -3437,6 +3459,7 @@
   .placeholder {
     border: 1px dashed var(--border);
     border-radius: 10px;
+    corner-shape: var(--corner);
     padding: 4rem 1rem;
     display: flex;
     flex-direction: column;
@@ -3451,6 +3474,7 @@
   .result {
     border: 1px solid var(--border);
     border-radius: 10px;
+    corner-shape: var(--corner);
     overflow: hidden;
     background: rgba(255, 255, 255, 0.02);
     backdrop-filter: blur(10px);
@@ -3481,6 +3505,7 @@
     gap: 0.5rem;
     padding: 0.55rem 1rem;
     border-radius: 8px;
+    corner-shape: var(--corner);
     font-size: 0.875rem;
     cursor: pointer;
     list-style: none;
@@ -3507,6 +3532,7 @@
     min-width: 11rem;
     padding: 0.3rem;
     border-radius: 10px;
+    corner-shape: var(--corner);
     background: #0a3a3b;
     border: 1px solid var(--border);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
@@ -3520,6 +3546,7 @@
     font-size: 0.85rem;
     padding: 0.5rem 0.6rem;
     border-radius: 6px;
+    corner-shape: var(--corner);
     cursor: pointer;
   }
   .copy-options button:hover {
@@ -3562,6 +3589,7 @@
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: 6px;
+    corner-shape: var(--corner);
     padding: 0.25rem 0.5rem;
     font-family: inherit;
     font-size: 0.78rem;
@@ -3579,6 +3607,7 @@
     overflow: auto;
     padding: 0.6rem;
     border-radius: 6px;
+    corner-shape: var(--corner);
     background: #041e1f;
     color: var(--accent);
     font-family: var(--font-mono);
@@ -3622,6 +3651,7 @@
     padding: 0.4rem 0.55rem;
     border: 1px solid var(--border);
     border-radius: 6px;
+    corner-shape: var(--corner);
     background: var(--bg);
     color: var(--text);
     font-family: var(--font-mono);
@@ -3780,6 +3810,7 @@
     gap: 0.4rem;
     padding: 0.25rem 0.5rem 0.25rem 0.25rem;
     border-radius: 8px;
+    corner-shape: var(--corner);
     border: 1px solid var(--border);
     background: rgba(255, 255, 255, 0.04);
     color: var(--text);
@@ -3795,6 +3826,7 @@
     height: 28px;
     object-fit: contain;
     border-radius: 5px;
+    corner-shape: var(--corner);
     background: rgba(255, 255, 255, 0.06);
   }
   .layer-chip.active {
@@ -3810,6 +3842,7 @@
     gap: 0.4rem;
     padding: 0.4rem 0.7rem;
     border-radius: 8px;
+    corner-shape: var(--corner);
     border: 1px dashed var(--border);
     color: var(--muted);
     cursor: pointer;
@@ -3868,6 +3901,7 @@
     background: rgba(255, 255, 255, 0.05);
     padding: 2px;
     border-radius: 6px;
+    corner-shape: var(--corner);
     border: 1px solid var(--border);
   }
   .tool-divider {
@@ -3890,6 +3924,7 @@
     padding: 0.3rem 0.6rem;
     border: none;
     border-radius: 4px;
+    corner-shape: var(--corner);
     background: transparent;
     color: var(--muted);
     font-family: inherit;
@@ -3923,6 +3958,7 @@
     width: 240px;
     padding: 0.625rem;
     border-radius: 8px;
+    corner-shape: var(--corner);
     display: flex;
     flex-direction: column;
     gap: 0.5rem;

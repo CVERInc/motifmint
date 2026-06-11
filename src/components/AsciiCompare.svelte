@@ -116,6 +116,7 @@
     user-select: none;
     touch-action: none;
     border-radius: 8px;
+    corner-shape: var(--corner);
     background: #041e1f;
   }
   .ascii-layer {
@@ -190,6 +191,7 @@
     font-weight: 500;
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
+    corner-shape: var(--corner);
     align-self: flex-start;
     height: fit-content;
   }
