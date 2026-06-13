@@ -28,3 +28,6 @@ Thumbs.db
 
 # misc
 *.log
+
+# local agent config
+.claude/
