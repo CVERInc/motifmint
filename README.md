@@ -9,7 +9,7 @@
 
 **Live demo:** [oss.cver.net/motifmint](https://oss.cver.net/motifmint/) · **License:** MIT · **No server, no upload, no signup**
 
-🌐 日本語の紹介 → [cver.net/ja-jp/oss/motifmint](https://cver.net/ja-jp/oss/motifmint) ・ 繁體中文介紹 → [cver.net/zh-tw/oss/motifmint](https://cver.net/zh-tw/oss/motifmint)
+🌐 [日本語](https://cver.net/ja-jp/oss/motifmint) · [한국어](https://cver.net/ko-kr/oss/motifmint) · [繁體中文](https://cver.net/zh-tw/oss/motifmint)
 
 ---
 
@@ -152,8 +152,6 @@ welcome.
 
 [MIT](./LICENSE). Third-party engine attributions in
 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
-
----
 
 ---
 
