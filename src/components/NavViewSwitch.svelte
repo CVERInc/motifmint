@@ -27,6 +27,7 @@
     gap: 3px;
     padding: 3px;
     border-radius: 10px;
+    corner-shape: var(--corner);
     border: 1px solid var(--border);
     background: rgba(255, 255, 255, 0.05);
   }
@@ -34,6 +35,7 @@
     padding: 0.45rem 1.4rem;
     border: none;
     border-radius: 8px;
+    corner-shape: var(--corner);
     background: transparent;
     color: var(--muted);
     font-family: inherit;

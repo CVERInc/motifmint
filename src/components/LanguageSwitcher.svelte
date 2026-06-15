@@ -33,6 +33,7 @@
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: 8px;
+    corner-shape: var(--corner);
     padding: 0.4rem 0.6rem;
     font-family: inherit;
     font-size: 0.85rem;

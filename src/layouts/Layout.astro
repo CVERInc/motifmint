@@ -123,6 +123,12 @@ const canonical = ogUrl;
         --accent-bg: rgba(172, 234, 206, 0.15);
         --font-sans: 'Nunito', 'Comfortaa', system-ui, -apple-system, sans-serif;
         --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+        /* Continuous-curvature (squircle) corners. Progressive enhancement:
+           corner-shape is Chromium-only as of mid-2026; Safari/WebKit & Firefox
+           ignore it and keep the plain border-radius arc — zero visual regression.
+           A custom property IS inherited, so this token reaches scoped component
+           styles too. corner-shape needs a non-zero border-radius to do anything. */
+        --corner: squircle;
       }
       *,
       *::before,
@@ -174,6 +180,7 @@ const canonical = ogUrl;
         background: rgba(255, 255, 255, 0.1);
         padding: 0.125rem 0.375rem;
         border-radius: 4px;
+        corner-shape: var(--corner);
         border: 1px solid var(--border);
       }
       
@@ -267,6 +274,7 @@ const canonical = ogUrl;
         font-size: 0.9rem;
         padding: 0.5rem 1rem;
         border-radius: 8px;
+        corner-shape: var(--corner);
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid var(--border);
         transition: background 0.2s ease, border-color 0.2s ease;
