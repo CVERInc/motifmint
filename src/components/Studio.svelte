@@ -2774,9 +2774,6 @@
     flex-direction: column;
     gap: 0.25rem;
   }
-  .seg.compact {
-    gap: 0;
-  }
   .seg legend {
     padding: 0;
     font-size: 0.75rem;
@@ -3188,11 +3185,6 @@
   .hint {
     margin: 0.25rem 0 0;
     font-size: 0.6875rem;
-    color: var(--muted);
-    font-style: italic;
-  }
-  .muted-hint {
-    font-size: 0.8125rem;
     color: var(--muted);
     font-style: italic;
   }
@@ -3655,21 +3647,6 @@
     font-family: var(--font-mono);
     font-size: 0.75rem;
   }
-  .svg-view-wrap {
-    display: flex;
-    flex-direction: column;
-  }
-  .hide-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.4rem 0.75rem;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-    font-size: 0.75rem;
-    color: var(--muted);
-    gap: 0.5rem;
-  }
   .hide-count {
     color: var(--text);
     font-weight: 500;
@@ -3708,57 +3685,6 @@
     to {
       opacity: 1;
     }
-  }
-  .result-preview.clickable :global(path) {
-    cursor: pointer;
-    transition: opacity 0.1s;
-  }
-  .result-preview.clickable :global(path:hover),
-  .result-preview :global(path[data-hovered='true']) {
-    opacity: 0.55;
-  }
-  .result-preview {
-    padding: 1.5rem;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 240px;
-    background:
-      linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
-      linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
-      linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
-    background-size: 16px 16px;
-    background-position:
-      0 0,
-      0 8px,
-      8px -8px,
-      -8px 0;
-  }
-  .result-preview.has-bg {
-    background: var(--bg-color);
-    background-size: auto;
-    background-position: 0 0;
-    border-radius: var(--bg-radius);
-    padding: calc(1.5rem + var(--bg-padding));
-  }
-  .result-preview.square {
-    aspect-ratio: 1 / 1;
-    max-height: 560px;
-    max-width: 560px;
-    margin: 0 auto;
-  }
-  .result-preview.square :global(svg) {
-    max-height: 100%;
-    width: 100%;
-    height: 100%;
-  }
-  .result-preview :global(svg) {
-    display: block;
-    width: 100%;
-    height: auto;
-    max-width: 100%;
-    max-height: 560px;
   }
 
   /* ─── Editor Toolbar ─── */
