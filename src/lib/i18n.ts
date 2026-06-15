@@ -64,6 +64,9 @@ const en = {
   'empty.adjust': 'Adjust settings on the left to see the SVG output.',
 
   'switcher.label': 'Language',
+
+  'theme.toLight': 'Switch to light theme',
+  'theme.toDark': 'Switch to dark theme',
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -105,6 +108,9 @@ const ja: Dict = {
   'empty.adjust': '左側の設定を調整すると SVG 出力が表示されます。',
 
   'switcher.label': '言語',
+
+  'theme.toLight': 'ライトテーマに切り替え',
+  'theme.toDark': 'ダークテーマに切り替え',
 };
 
 // 繁體中文 (Traditional Chinese) — Taiwan. Never Simplified.
@@ -143,6 +149,9 @@ const zhTW: Dict = {
   'empty.adjust': '調整左側設定即可看到 SVG 輸出。',
 
   'switcher.label': '語言',
+
+  'theme.toLight': '切換至淺色主題',
+  'theme.toDark': '切換至深色主題',
 };
 
 const es: Dict = {
@@ -181,6 +190,9 @@ const es: Dict = {
   'empty.adjust': 'Ajusta la configuración de la izquierda para ver la salida SVG.',
 
   'switcher.label': 'Idioma',
+
+  'theme.toLight': 'Cambiar al tema claro',
+  'theme.toDark': 'Cambiar al tema oscuro',
 };
 
 export const TRANSLATIONS: Record<Locale, Dict> = {
