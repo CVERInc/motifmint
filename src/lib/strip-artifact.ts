@@ -24,7 +24,7 @@ function chebyshev(a: [number, number, number], b: [number, number, number]): nu
  * merge anti-aliased edges, narrow enough to keep distinct logo colors apart.
  */
 export function mergeNearColors(svg: string, threshold: number = 16): string {
-  const re = /\bfill\s*=\s*"(#[0-9a-fA-F]{6,8})"/g;
+  const re = /(?<![-:\w])fill\s*=\s*"(#[0-9a-fA-F]{6,8})"/g;
   const colors = new Set<string>();
   for (const m of svg.matchAll(re)) colors.add(m[1].toLowerCase());
 
@@ -69,8 +69,11 @@ export function mergeNearColors(svg: string, threshold: number = 16): string {
  */
 export function normalizeFills(svg: string): string {
   return svg.replace(/<path\b([^>]*?)(\/?)>/gi, (match, attrs, slash) => {
-    if (/\bfill\s*=\s*["']/i.test(attrs)) return match;
-    if (/\bstyle\s*=\s*["'][^"']*\bfill\s*:/i.test(attrs)) return match;
+    // `(?<![-:\w])` so a look-alike attribute (`data-fill`, `xlink:fill`)
+    // doesn't get mistaken for a real `fill`, which would leave the path
+    // un-normalized and invisible to the Recolor swatch UI.
+    if (/(?<![-:\w])fill\s*=\s*["']/i.test(attrs)) return match;
+    if (/(?<![-:\w])style\s*=\s*["'][^"']*(?<![-\w])fill\s*:/i.test(attrs)) return match;
     // Insert before the closing — preserve self-closing vs open form.
     const space = attrs.endsWith(' ') || attrs === '' ? '' : ' ';
     return `<path${attrs}${space}fill="#000000"${slash}>`;

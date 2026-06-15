@@ -18,8 +18,9 @@ export function applyPathHides(svg: string, hidden: Set<number>): string {
   return svg.replace(/<path\b([^>]*?)(\/?)>/gi, (match, attrs: string, slash: string) => {
     const idx = i++;
     if (!hidden.has(idx)) return match;
-    if (/\bfill\s*=\s*["'][^"']*["']/i.test(attrs)) {
-      return `<path${attrs.replace(/\bfill\s*=\s*["'][^"']*["']/i, 'fill="none"')}${slash}>`;
+    // `(?<![-:\w])` so `data-fill`/`xlink:fill` aren't mistaken for the fill.
+    if (/(?<![-:\w])fill\s*=\s*["'][^"']*["']/i.test(attrs)) {
+      return `<path${attrs.replace(/(?<![-:\w])fill\s*=\s*["'][^"']*["']/i, 'fill="none"')}${slash}>`;
     }
     return `<path${attrs} fill="none"${slash}>`;
   });

@@ -108,6 +108,20 @@ describe('applyColorGradients', () => {
     expect(out).toContain('r="50"');
   });
 
+  // Regression: repaint matched the real fill via a plain `\bfill` boundary,
+  // but on a path whose fill lived in a look-alike attr (`data-fill`) it would
+  // rewrite THAT instead of adding a true `fill`, leaving the path unpainted.
+  it('adds a real fill (not data-fill) when the path has a data-fill look-alike', () => {
+    const paths: PathInfo[] = [{ origIdx: 0, originalFill: '#ff0000' }];
+    const svg =
+      '<svg viewBox="0 0 10 10"><path data-orig-idx="0" data-fill="#ff0000" d="M0 0"/></svg>';
+    const out = applyColorGradients(svg, new Map([['#ff0000', spec]]), paths);
+    const id = gradId('#ff0000');
+    expect(out).toContain(`fill="url(#${id})"`); // a real fill was added
+    expect(out).toContain('data-fill="#ff0000"'); // the look-alike is untouched
+    expect(out).not.toContain(`data-fill="url(#${id})"`);
+  });
+
   it('supports 3+ stops', () => {
     const three: GradientSpec = {
       angle: 90,

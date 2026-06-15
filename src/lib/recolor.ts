@@ -4,9 +4,12 @@
  * other layers.
  */
 
-// Catches both `fill="..."` and `fill='...'`
-const FILL_ATTR_RE = /\bfill\s*=\s*(?:"([^"]+)"|'([^']+)')/gi;
-const STROKE_ATTR_RE = /\bstroke\s*=\s*(?:"([^"]+)"|'([^']+)')/gi;
+// Catches both `fill="..."` and `fill='...'`. The `(?<![-:\w])` lookbehind
+// keeps us off look-alike attributes whose name merely ENDS in `fill`/`stroke`
+// — `data-fill`, `xlink:fill`, `fill-opacity`'s sibling `*-fill` etc. — since a
+// plain `\b` boundary treats `-` and `:` as word breaks and would mis-match.
+const FILL_ATTR_RE = /(?<![-:\w])fill\s*=\s*(?:"([^"]+)"|'([^']+)')/gi;
+const STROKE_ATTR_RE = /(?<![-:\w])stroke\s*=\s*(?:"([^"]+)"|'([^']+)')/gi;
 // Catches `style="fill: ..."` and `style="stroke: ..."`
 const STYLE_FILL_RE = /(?<![-\w])fill\s*:\s*([^;"'>\s]+)/gi;
 const STYLE_STROKE_RE = /(?<![-\w])stroke\s*:\s*([^;"'>\s]+)/gi;

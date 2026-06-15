@@ -27,6 +27,13 @@ describe('parsePathList', () => {
       { origIdx: 2, originalFill: '#000000' }, // missing fill defaults to black
     ]);
   });
+
+  // Regression: a plain `\bfill` boundary read a `data-fill` look-alike as the
+  // path's real fill, so a fill-less path reported the wrong originalFill.
+  it('does not read a data-fill look-alike as the real fill', () => {
+    const svg = '<svg><path data-orig-idx="0" data-fill="#abcdef" d="M0 0"/></svg>';
+    expect(parsePathList(svg)).toEqual([{ origIdx: 0, originalFill: '#000000' }]);
+  });
 });
 
 describe('setPathFill / setPathRemoved + compaction', () => {

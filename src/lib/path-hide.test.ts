@@ -19,4 +19,14 @@ describe('applyPathHides', () => {
     const out = applyPathHides(SVG, new Set([2]));
     expect(out).toContain('<path d="c" fill="none"/>');
   });
+
+  // Regression: hiding a path whose only fill-ish attr is a `data-fill`
+  // look-alike must ADD a real fill="none", not overwrite the data-fill.
+  it('adds a real fill="none" instead of editing a data-fill look-alike', () => {
+    const svg = '<svg><path data-fill="#abc" d="z"/></svg>';
+    const out = applyPathHides(svg, new Set([0]));
+    expect(out).toContain('data-fill="#abc"'); // untouched
+    expect(out).toContain('fill="none"'); // real fill added
+    expect(out).not.toContain('data-fill="none"');
+  });
 });

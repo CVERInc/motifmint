@@ -20,6 +20,16 @@ describe('mergeNearColors', () => {
     // distance 32 > threshold 16 → unchanged
     expect(mergeNearColors(svg, 16)).toBe(svg);
   });
+
+  // Regression: the merge regex used a plain `\bfill` boundary and would also
+  // rewrite a `data-fill="#......"` look-alike attribute.
+  it('does not touch a data-fill look-alike attribute', () => {
+    const svg = '<svg><path data-fill="#020202" fill="#040404"/><path fill="#060606"/></svg>';
+    const out = mergeNearColors(svg, 16);
+    expect(out).toContain('data-fill="#020202"'); // untouched
+    // the two REAL fills still merge to the first-seen representative
+    expect(out.match(/[^-:\w]fill="#040404"/g)).toHaveLength(2);
+  });
 });
 
 describe('normalizeFills', () => {
@@ -41,6 +51,16 @@ describe('normalizeFills', () => {
   it('preserves self-closing form', () => {
     const out = normalizeFills('<svg><path d="M0 0"/></svg>');
     expect(out).toContain('fill="#000000"/>');
+  });
+
+  // Regression: a `data-fill` (or `xlink:fill`) attribute used to satisfy the
+  // "already has a fill" guard via a plain `\bfill` boundary, so the path was
+  // skipped and left fill-less — invisible to the Recolor swatch UI.
+  it('still normalizes a path whose only fill-ish attr is data-fill', () => {
+    const out = normalizeFills('<svg><path data-fill="x" d="M0 0"/></svg>');
+    expect(out).toContain('fill="#000000"');
+    // the real fill is added, the look-alike attribute is untouched
+    expect(out).toContain('data-fill="x"');
   });
 });
 

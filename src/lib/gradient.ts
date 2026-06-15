@@ -90,8 +90,10 @@ export function applyColorGradients(
     const key = idxToKey.get(parseInt(idxM[1], 10));
     if (!key) return match;
     const url = `url(#${gradId(key)})`;
-    if (/\bfill\s*=\s*["'][^"']*["']/i.test(attrs)) {
-      return `<path${attrs.replace(/\bfill\s*=\s*["'][^"']*["']/i, `fill="${url}"`)}${slash}>`;
+    // `(?<![-:\w])` so a look-alike attribute (`data-fill`, `xlink:fill`)
+    // isn't mistaken for the real `fill`, which would leave the path unpainted.
+    if (/(?<![-:\w])fill\s*=\s*["'][^"']*["']/i.test(attrs)) {
+      return `<path${attrs.replace(/(?<![-:\w])fill\s*=\s*["'][^"']*["']/i, `fill="${url}"`)}${slash}>`;
     }
     return `<path${attrs} fill="${url}"${slash}>`;
   });

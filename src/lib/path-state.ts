@@ -36,7 +36,8 @@ export function parsePathList(taggedSvg: string): PathInfo[] {
     const idxM = attrs.match(/\bdata-orig-idx\s*=\s*["'](\d+)["']/);
     if (!idxM) continue;
     const idx = parseInt(idxM[1], 10);
-    const fillM = attrs.match(/\bfill\s*=\s*["']([^"']+)["']/);
+    // `(?<![-:\w])` so `data-fill`/`xlink:fill` aren't read as the real fill.
+    const fillM = attrs.match(/(?<![-:\w])fill\s*=\s*["']([^"']+)["']/);
     let fill = fillM?.[1] ?? '#000000';
     fill = fill.toLowerCase();
     out.push({ origIdx: idx, originalFill: fill });
@@ -66,21 +67,21 @@ export function applyPathOverrides(
       // user can see exactly which paths the slider would remove.
       if (previewMode) {
         const marker = ' data-preview-remove="1"';
-        if (/\bfill\s*=\s*["'][^"']*["']/i.test(attrs)) {
-          return `<path${attrs.replace(/\bfill\s*=\s*["'][^"']*["']/i, 'fill="#ef4444"')}${marker}${slash}>`;
+        if (/(?<![-:\w])fill\s*=\s*["'][^"']*["']/i.test(attrs)) {
+          return `<path${attrs.replace(/(?<![-:\w])fill\s*=\s*["'][^"']*["']/i, 'fill="#ef4444"')}${marker}${slash}>`;
         }
         return `<path${attrs} fill="#ef4444"${marker}${slash}>`;
       }
-      if (/\bfill\s*=\s*["'][^"']*["']/i.test(attrs)) {
-        return `<path${attrs.replace(/\bfill\s*=\s*["'][^"']*["']/i, 'fill="none"')}${slash}>`;
+      if (/(?<![-:\w])fill\s*=\s*["'][^"']*["']/i.test(attrs)) {
+        return `<path${attrs.replace(/(?<![-:\w])fill\s*=\s*["'][^"']*["']/i, 'fill="none"')}${slash}>`;
       }
       return `<path${attrs} fill="none"${slash}>`;
     }
 
     const state = states.get(idx);
     if (!state?.fill) return match;
-    if (/\bfill\s*=\s*["'][^"']*["']/i.test(attrs)) {
-      const next = attrs.replace(/\bfill\s*=\s*["'][^"']*["']/i, `fill="${state.fill}"`);
+    if (/(?<![-:\w])fill\s*=\s*["'][^"']*["']/i.test(attrs)) {
+      const next = attrs.replace(/(?<![-:\w])fill\s*=\s*["'][^"']*["']/i, `fill="${state.fill}"`);
       return `<path${next}${slash}>`;
     }
     return `<path${attrs} fill="${state.fill}"${slash}>`;

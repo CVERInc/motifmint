@@ -101,4 +101,25 @@ describe('applyRemap', () => {
     const svg = '<svg><path fill="#abcdef"/></svg>';
     expect(applyRemap(svg, {})).toBe(svg);
   });
+
+  // Regression: a plain `\bfill`/`\bstroke` boundary also matched look-alike
+  // attributes like `data-fill` / `xlink:fill` (the `-`/`:` reads as a word
+  // break), so extractColors reported phantom colors and applyRemap corrupted
+  // those attributes. The (?<![-:\w]) lookbehind fixes it.
+  describe('look-alike attribute names (data-fill / xlink:fill)', () => {
+    it('extractColors ignores data-fill and xlink:fill', () => {
+      const svg = '<svg><path data-fill="#aaaaaa" xlink:stroke="#bbbbbb" fill="#cccccc"/></svg>';
+      expect(extractColors(svg)).toEqual([{ raw: '#cccccc', hex: '#cccccc' }]);
+    });
+
+    it('applyRemap does not rewrite a data-fill attribute', () => {
+      const svg = '<svg><path data-fill="#aaaaaa" fill="#bbbbbb" d="x"/></svg>';
+      const out = applyRemap(svg, { '#aaaaaa': '#000000', '#bbbbbb': '#00ff00' });
+      // the real fill is remapped…
+      expect(out).toContain('fill="#00ff00"');
+      // …but the look-alike attribute is left exactly as-is
+      expect(out).toContain('data-fill="#aaaaaa"');
+      expect(out).not.toContain('data-fill="#000000"');
+    });
+  });
 });
