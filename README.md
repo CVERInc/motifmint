@@ -22,7 +22,7 @@ app-icon pack. It is **not** a general format converter: it's focused on making
 marks look good and ship anywhere.
 
 Why not the usual online tracers? Most upload your image to a third-party
-server, lock the good output behind a paywall, or stop at a one-shot trace.
+server, paywall the good output, or stop at a one-shot trace.
 motifmint:
 
 - Runs **entirely in your browser** via WebAssembly — your image never leaves
@@ -32,7 +32,7 @@ motifmint:
   so the UI stays responsive.
 - Is a **studio, not a one-shot tool** — recolor, gradient-fill, hide/erase, and
   compose your mark, then export.
-- Is **MIT-licensed**, self-hostable, forkable, and free forever.
+- Is **MIT-licensed**, self-hostable, and forkable.
 
 ## Features
 
