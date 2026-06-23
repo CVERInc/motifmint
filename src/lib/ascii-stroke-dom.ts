@@ -58,8 +58,10 @@ export function sampleSvgStrokes(
   if (typeof document === 'undefined') return null;
 
   const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+  // instanceof narrows root to SVGSVGElement for the rest of the function (and
+  // rejects <parsererror>/non-SVG roots), so no downstream cast is needed.
   const root = doc.documentElement;
-  if (!root || root.nodeName === 'parsererror' || root.tagName.toLowerCase() !== 'svg') return null;
+  if (!(root instanceof SVGSVGElement)) return null;
 
   // Resolve the user-space box: explicit viewBox, else width/height.
   const vb = root.getAttribute('viewBox');
@@ -92,7 +94,7 @@ export function sampleSvgStrokes(
     'style',
     'position:absolute;left:-99999px;top:0;width:0;height:0;overflow:hidden',
   );
-  const mounted = document.importNode(root, true) as SVGSVGElement;
+  const mounted = document.importNode(root, true);
   mounted.setAttribute('width', String(vbW));
   mounted.setAttribute('height', String(vbH));
   mounted.setAttribute('preserveAspectRatio', 'xMidYMid meet');
