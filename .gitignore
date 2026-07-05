@@ -29,5 +29,9 @@ Thumbs.db
 # misc
 *.log
 
+# Internal session handoff docs — do not publish.
+HANDOFF.md
+POSITIONING.md
+
 # local agent config
 .claude/
