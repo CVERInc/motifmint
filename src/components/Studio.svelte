@@ -1314,19 +1314,26 @@
     const wantColor = asciiColor;
     asciiBusy = true;
     const timer = setTimeout(async () => {
-      if (isVector) {
-        const plain = vectorAscii('none');
-        if (seq !== asciiSeq) return;
-        asciiArt = plain ?? '';
-        asciiHtml = wantColor ? (vectorAscii('html') ?? '') : '';
-      } else {
-        const id = await buildAsciiData();
-        if (seq !== asciiSeq) return;
-        asciiArt = id ? asciiFrom(id, 'none') : '';
-        asciiHtml = id && wantColor ? asciiFrom(id, 'html') : '';
+      try {
+        if (isVector) {
+          const plain = vectorAscii('none');
+          if (seq !== asciiSeq) return;
+          asciiArt = plain ?? '';
+          asciiHtml = wantColor ? (vectorAscii('html') ?? '') : '';
+        } else {
+          const id = await buildAsciiData();
+          if (seq !== asciiSeq) return;
+          asciiArt = id ? asciiFrom(id, 'none') : '';
+          asciiHtml = id && wantColor ? asciiFrom(id, 'html') : '';
+        }
+        lastAsciiSig = sig;
+      } catch (err) {
+        // Keep the last art on failure; the sig stays stale so a retrace retries.
+        console.error('ascii recompute failed:', err);
+      } finally {
+        // Only the newest run owns the spinner — a superseded one must not clear it.
+        if (seq === asciiSeq) asciiBusy = false;
       }
-      lastAsciiSig = sig;
-      asciiBusy = false;
     }, 120);
     return () => clearTimeout(timer);
   });
