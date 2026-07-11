@@ -6,7 +6,12 @@ import Studio from '~/components/Studio.svelte';
 
 <Layout>
   <main>
-    <Hero client:only="svelte" />
+<!-- client:load (not client:only): the hero is the LCP element and pure
+         text — SSR paints it with the initial HTML instead of after the whole
+         Svelte bundle downloads. Locale detection is client-side, so non-English
+         users briefly see the en-US copy; Studio stays client:only (browser-only
+         APIs throughout). -->
+    <Hero client:load />
 
     <Studio client:only="svelte" />
   </main>
