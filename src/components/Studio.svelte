@@ -1018,8 +1018,12 @@
     if (!finalSvg) return;
     packing = true;
     try {
-      const [{ zipSync }, { buildIco }, { ICON_SPECS, ICO_SIZES, generateWebManifest, generateHtmlSnippet }] =
-        await Promise.all([import('fflate'), import('~/lib/ico'), import('~/lib/icon-pack')]);
+      const [{ zipSync }, { buildIco }, iconPack] = await Promise.all([
+        import('fflate'),
+        import('~/lib/ico'),
+        import('~/lib/icon-pack'),
+      ]);
+      const { ICON_SPECS, ICO_SIZES, generateWebManifest, generateHtmlSnippet } = iconPack;
       const name = stripExtension(file.name) || 'icon';
       const files: Record<string, Uint8Array> = {};
 
