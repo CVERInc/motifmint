@@ -56,6 +56,7 @@
   import Check from '@lucide/svelte/icons/check';
   // fflate / ico / icon-pack are export-only: loaded on first download click,
   // not in the page bundle everyone pays for on load.
+  import { svgAspect, fitDims, svgToCanvas, canvasToBlob } from '~/lib/svg-raster';
   import { toComponentName, toDataUri, toReactComponent, toVueComponent } from '~/lib/copy-as';
   import {
     composeLayers,
@@ -159,6 +160,11 @@
   let status = $state<Status>('idle');
   let errorMessage = $state<string | null>(null);
   let dragOver = $state(false);
+
+  function reportError(err: unknown) {
+    errorMessage = err instanceof Error ? err.message : String(err);
+    status = 'error';
+  }
 
   let customPresets = $state<CustomPreset[]>([]);
   let newPresetName = $state('');
@@ -736,8 +742,7 @@
       };
       if (livePreview) runConvert();
     } catch (err) {
-      errorMessage = err instanceof Error ? err.message : String(err);
-      status = 'error';
+      reportError(err);
     }
   }
 
@@ -795,8 +800,7 @@
       };
       worker.postMessage(req, [pixels]);
     } catch (err) {
-      errorMessage = err instanceof Error ? err.message : String(err);
-      status = 'error';
+      reportError(err);
     }
   }
 
@@ -921,53 +925,19 @@
   let exporting = $state(false);
 
   async function rasterize(finalSvg: string, fmt: RasterFmt, sizeOverride?: number): Promise<Blob> {
-    const vb = readViewBox(finalSvg);
-    const ar = vb && vb.h > 0 ? vb.w / vb.h : 1;
     const longest =
       sizeOverride ??
       (rasterSize > 0
         ? rasterSize
         : Math.max(pixelsCache?.width ?? 512, pixelsCache?.height ?? 512));
-    const w = ar >= 1 ? longest : Math.max(1, Math.round(longest * ar));
-    const h = ar >= 1 ? Math.max(1, Math.round(longest / ar)) : longest;
-
-    // Give the SVG explicit pixel dims so the <img> rasterizes at full res.
-    const sized = finalSvg.replace(
-      /<svg([^>]*)>/i,
-      (_m, attrs: string) =>
-        `<svg${attrs.replace(/\s(?:width|height)\s*=\s*"[^"]*"/gi, '')} width="${w}" height="${h}">`,
-    );
-
-    const url = URL.createObjectURL(new Blob([sized], { type: 'image/svg+xml;charset=utf-8' }));
-    try {
-      const img = new Image();
-      img.decoding = 'async';
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject(new Error('Could not render SVG'));
-        img.src = url;
-      });
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas not available');
+    const { w, h } = fitDims(svgAspect(finalSvg), longest);
+    const canvas = await svgToCanvas(finalSvg, {
+      w,
+      h,
       // JPEG has no alpha — flatten transparency onto white instead of black.
-      if (fmt === 'jpeg') {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, w, h);
-      }
-      ctx.drawImage(img, 0, 0, w, h);
-      return await new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob(
-          (b) => (b ? resolve(b) : reject(new Error('Export failed'))),
-          RASTER_MIME[fmt],
-          fmt === 'jpeg' ? 0.92 : undefined,
-        ),
-      );
-    } finally {
-      URL.revokeObjectURL(url);
-    }
+      background: fmt === 'jpeg' ? '#ffffff' : undefined,
+    });
+    return canvasToBlob(canvas, RASTER_MIME[fmt], fmt === 'jpeg' ? 0.92 : undefined);
   }
 
   async function download() {
@@ -983,8 +953,7 @@
       const blob = await rasterize(finalSvg, downloadFormat);
       saveBlob(blob, downloadFormat === 'jpeg' ? 'jpg' : downloadFormat);
     } catch (err) {
-      errorMessage = err instanceof Error ? err.message : String(err);
-      status = 'error';
+      reportError(err);
     } finally {
       exporting = false;
     }
@@ -1011,8 +980,7 @@
       const zipped = zipSync(files, { level: 0 });
       saveBlob(new Blob([zipped], { type: 'application/zip' }), 'zip', `${name}-${ext}-sizes`);
     } catch (err) {
-      errorMessage = err instanceof Error ? err.message : String(err);
-      status = 'error';
+      reportError(err);
     } finally {
       exporting = false;
     }
@@ -1029,43 +997,19 @@
     size: number,
     inset: number,
   ): Promise<Uint8Array> {
-    const vb = readViewBox(finalSvg);
-    const ar = vb && vb.h > 0 ? vb.w / vb.h : 1;
     // Content box after the safe-area inset, then fit the mark's aspect inside.
     const box = Math.max(1, Math.round(size * (1 - 2 * inset)));
-    const drawW = ar >= 1 ? box : Math.max(1, Math.round(box * ar));
-    const drawH = ar >= 1 ? Math.max(1, Math.round(box / ar)) : box;
-
-    const sized = finalSvg.replace(
-      /<svg([^>]*)>/i,
-      (_m, attrs: string) =>
-        `<svg${attrs.replace(/\s(?:width|height)\s*=\s*"[^"]*"/gi, '')} width="${drawW}" height="${drawH}">`,
-    );
-    const url = URL.createObjectURL(new Blob([sized], { type: 'image/svg+xml;charset=utf-8' }));
-    try {
-      const img = new Image();
-      img.decoding = 'async';
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject(new Error('Could not render SVG'));
-        img.src = url;
-      });
-      const canvas = document.createElement('canvas');
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas not available');
-      ctx.drawImage(img, (size - drawW) / 2, (size - drawH) / 2, drawW, drawH);
-      const blob = await new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob(
-          (b) => (b ? resolve(b) : reject(new Error('Icon render failed'))),
-          'image/png',
-        ),
-      );
-      return new Uint8Array(await blob.arrayBuffer());
-    } finally {
-      URL.revokeObjectURL(url);
-    }
+    const { w, h } = fitDims(svgAspect(finalSvg), box);
+    const canvas = await svgToCanvas(finalSvg, {
+      w,
+      h,
+      canvasW: size,
+      canvasH: size,
+      dx: (size - w) / 2,
+      dy: (size - h) / 2,
+    });
+    const blob = await canvasToBlob(canvas, 'image/png');
+    return new Uint8Array(await blob.arrayBuffer());
   }
 
   async function downloadIconPack() {
@@ -1111,8 +1055,7 @@
       const zipped = zipSync(files, { level: 0 });
       saveBlob(new Blob([zipped], { type: 'application/zip' }), 'zip', `${name}-icons`);
     } catch (err) {
-      errorMessage = err instanceof Error ? err.message : String(err);
-      status = 'error';
+      reportError(err);
     } finally {
       packing = false;
     }
@@ -1122,38 +1065,25 @@
   type CopyKind = 'svg' | 'react' | 'vue' | 'datauri' | 'ascii' | 'ansi';
   let copiedKind = $state<CopyKind | null>(null);
   let copyTimer: ReturnType<typeof setTimeout> | undefined;
+
+  // Write to the clipboard and flash the matching "copied ✓" chip for 1.5s.
+  async function copyToClipboard(text: string, kind: CopyKind) {
+    try {
+      await navigator.clipboard.writeText(text);
+      copiedKind = kind;
+      clearTimeout(copyTimer);
+      copyTimer = setTimeout(() => (copiedKind = null), 1500);
+    } catch (err) {
+      reportError(err);
+    }
+  }
   let asciiCols = $state(100);
 
   // Rasterize the composed mark and read its pixels back (for ASCII).
   async function renderImageData(finalSvg: string, longest: number): Promise<ImageData | null> {
-    const vb = readViewBox(finalSvg);
-    const ar = vb && vb.h > 0 ? vb.w / vb.h : 1;
-    const w = ar >= 1 ? longest : Math.max(1, Math.round(longest * ar));
-    const h = ar >= 1 ? Math.max(1, Math.round(longest / ar)) : longest;
-    const sized = finalSvg.replace(
-      /<svg([^>]*)>/i,
-      (_m, a: string) =>
-        `<svg${a.replace(/\s(?:width|height)\s*=\s*"[^"]*"/gi, '')} width="${w}" height="${h}">`,
-    );
-    const url = URL.createObjectURL(new Blob([sized], { type: 'image/svg+xml;charset=utf-8' }));
-    try {
-      const im = new Image();
-      im.decoding = 'async';
-      await new Promise<void>((res, rej) => {
-        im.onload = () => res();
-        im.onerror = () => rej(new Error('Could not render SVG'));
-        im.src = url;
-      });
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return null;
-      ctx.drawImage(im, 0, 0, w, h);
-      return ctx.getImageData(0, 0, w, h);
-    } finally {
-      URL.revokeObjectURL(url);
-    }
+    const { w, h } = fitDims(svgAspect(finalSvg), longest);
+    const canvas = await svgToCanvas(finalSvg, { w, h });
+    return canvas.getContext('2d')?.getImageData(0, 0, w, h) ?? null;
   }
 
   // Rasterize once, then serialize to whichever carrier the caller wants —
@@ -1215,13 +1145,9 @@
       else if (kind === 'vue') text = toVueComponent(finalSvg);
       else if (kind === 'datauri') text = toDataUri(finalSvg);
       else if (kind === 'ascii') text = (await buildAsciiText()) ?? '';
-      await navigator.clipboard.writeText(text);
-      copiedKind = kind;
-      clearTimeout(copyTimer);
-      copyTimer = setTimeout(() => (copiedKind = null), 1500);
+      await copyToClipboard(text, kind);
     } catch (err) {
-      errorMessage = err instanceof Error ? err.message : String(err);
-      status = 'error';
+      reportError(err);
     }
   }
 
@@ -1240,15 +1166,7 @@
   async function copyAsciiAnsi() {
     const text = await buildAsciiText('ansi');
     if (text == null) return;
-    try {
-      await navigator.clipboard.writeText(text);
-      copiedKind = 'ansi';
-      clearTimeout(copyTimer);
-      copyTimer = setTimeout(() => (copiedKind = null), 1500);
-    } catch (err) {
-      errorMessage = err instanceof Error ? err.message : String(err);
-      status = 'error';
-    }
+    await copyToClipboard(text, 'ansi');
   }
 
   async function downloadAsciiAnsi() {
@@ -1372,15 +1290,7 @@
   async function copyAsciiArt() {
     // asciiArt is the same bytes the preview shows (and that .txt/.ans export).
     if (!asciiArt) return;
-    try {
-      await navigator.clipboard.writeText(asciiArt);
-      copiedKind = 'ascii';
-      clearTimeout(copyTimer);
-      copyTimer = setTimeout(() => (copiedKind = null), 1500);
-    } catch (err) {
-      errorMessage = err instanceof Error ? err.message : String(err);
-      status = 'error';
-    }
+    await copyToClipboard(asciiArt, 'ascii');
   }
 
   function reset() {
