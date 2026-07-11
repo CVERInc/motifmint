@@ -54,9 +54,8 @@
   import Package from '@lucide/svelte/icons/package';
   import Copy from '@lucide/svelte/icons/copy';
   import Check from '@lucide/svelte/icons/check';
-  import { zipSync } from 'fflate';
-  import { buildIco } from '~/lib/ico';
-  import { ICON_SPECS, ICO_SIZES, generateWebManifest, generateHtmlSnippet } from '~/lib/icon-pack';
+  // fflate / ico / icon-pack are export-only: loaded on first download click,
+  // not in the page bundle everyone pays for on load.
   import { toComponentName, toDataUri, toReactComponent, toVueComponent } from '~/lib/copy-as';
   import {
     composeLayers,
@@ -1002,6 +1001,7 @@
     const name = stripExtension(file.name) || 'icon';
     exporting = true;
     try {
+      const { zipSync } = await import('fflate');
       const files: Record<string, Uint8Array> = {};
       for (const { size, suffix } of buildSizeSet(base, DEFAULT_SCALES)) {
         const blob = await rasterize(finalSvg, fmt, size);
@@ -1074,6 +1074,8 @@
     if (!finalSvg) return;
     packing = true;
     try {
+      const [{ zipSync }, { buildIco }, { ICON_SPECS, ICO_SIZES, generateWebManifest, generateHtmlSnippet }] =
+        await Promise.all([import('fflate'), import('~/lib/ico'), import('~/lib/icon-pack')]);
       const name = stripExtension(file.name) || 'icon';
       const files: Record<string, Uint8Array> = {};
 

@@ -1,8 +1,12 @@
 /// <reference lib="webworker" />
 import { traceImage } from './trace';
 import { stripBoundingBoxArtifact, normalizeFills, mergeNearColors } from './strip-artifact';
-import { optimizeSvg } from './svgo';
 import type { TracerParams } from './presets';
+
+// SVGO's browser bundle dwarfs the rest of this worker. Load it as its own
+// chunk, kicked off at boot (non-blocking) so the wasm/trace path is ready
+// immediately and the first optimize awaits an already-in-flight fetch.
+const svgoLoad = import('./svgo');
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -43,6 +47,7 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
     }
     let svg = traceImage(arr, width, height, params);
     if (optimize) {
+      const { optimizeSvg } = await svgoLoad;
       svg = optimizeSvg(svg);
     }
     // Post-processing pipeline (always runs, regardless of SVGO):
