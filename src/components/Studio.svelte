@@ -981,7 +981,8 @@
         const blob = await rasterize(finalSvg, fmt, size);
         files[`${name}${suffix}.${ext}`] = new Uint8Array(await blob.arrayBuffer());
       }
-      const zipped = zipSync(files, { level: 6 });
+      // Raster payloads are already compressed — store, don't re-deflate.
+      const zipped = zipSync(files, { level: 0 });
       saveBlob(new Blob([zipped], { type: 'application/zip' }), 'zip', `${name}-${ext}-sizes`);
     } catch (err) {
       errorMessage = err instanceof Error ? err.message : String(err);
@@ -1077,7 +1078,9 @@
           `\n`,
       );
 
-      const zipped = zipSync(files, { level: 6 });
+      // PNG/ICO payloads are already compressed (the two text files are tiny) —
+      // store, don't re-deflate: same bytes, no main-thread stall on big packs.
+      const zipped = zipSync(files, { level: 0 });
       saveBlob(new Blob([zipped], { type: 'application/zip' }), 'zip', `${name}-icons`);
     } catch (err) {
       errorMessage = err instanceof Error ? err.message : String(err);
