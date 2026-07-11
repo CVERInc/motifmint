@@ -11,10 +11,15 @@ const DEFAULT_CONFIG: Config = {
         overrides: {
           removeViewBox: false,
           collapseGroups: false,
-          // Keep explicit fills (even fill="#000000") so the Recolor UI
-          // can detect them. Without this SVGO strips fills matching the
-          // SVG default, leaving Recolor with nothing to remap.
+          // Recolor/mergeNearColors key path groups by hex fills. Two guards:
+          //  - removeUselessStrokeAndFill would drop "useless" fills outright;
+          //  - convertColors rewrites #ff0000 → "red", which the hex-only
+          //    grouping (and the color-picker swatches) can't handle.
+          // (fill="#000000" still gets stripped as an SVG default by
+          // removeUnknownsAndDefaults — normalizeFills re-adds it right after
+          // this pass in the worker pipeline.)
           removeUselessStrokeAndFill: false,
+          convertColors: false,
         },
       },
     },
