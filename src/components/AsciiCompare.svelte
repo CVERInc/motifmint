@@ -12,16 +12,8 @@
     /** Fill line-box seams so block glyphs (█) tile seamlessly — set for the
      *  blocks ramp; a no-op for sparse ramps. */
     tight?: boolean;
-    busy?: boolean;
   }
-  const {
-    originalUrl,
-    ascii,
-    asciiHtml,
-    lineHeight = 1,
-    tight = false,
-    busy = false,
-  }: Props = $props();
+  const { originalUrl, ascii, asciiHtml, lineHeight = 1, tight = false }: Props = $props();
 
   let container = $state<HTMLDivElement | null>(null);
   // 0 = ASCII only · 100 = original only · between = original revealed from left.
@@ -60,9 +52,9 @@
     {#if asciiHtml}
       <!-- eslint-disable-next-line svelte/no-at-html-tags — markup is built by
            imageToAscii from canvas pixels (glyphs HTML-escaped), never user text -->
-      <pre class="art" class:busy class:tight style:line-height={lineHeight}>{@html asciiHtml}</pre>
+      <pre class="art" class:tight style:line-height={lineHeight}>{@html asciiHtml}</pre>
     {:else}
-      <pre class="art" class:busy class:tight style:line-height={lineHeight}>{ascii || '…'}</pre>
+      <pre class="art" class:tight style:line-height={lineHeight}>{ascii || '…'}</pre>
     {/if}
   </div>
 

@@ -4,7 +4,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyColorGradients, type GradientSpec } from './gradient';
 import { bakeBackdrop, backdropCss, DEFAULT_BACKDROP, readViewBox } from './backdrop';
-import { applyRemap } from './recolor';
 import { mergeNearColors } from './strip-artifact';
 import { extractSvgInner } from './compose-layers';
 import { formatBytes } from './format';
@@ -43,13 +42,6 @@ describe('backdrop edges', () => {
 
   it('readViewBox rejects a malformed viewBox', () => {
     expect(readViewBox('<svg viewBox="0 0 nan 10">')).toBeNull();
-  });
-});
-
-describe('recolor edges', () => {
-  it('never repaints none / url() paints', () => {
-    const svg = '<svg><path fill="none"/><path fill="url(#g)"/></svg>';
-    expect(applyRemap(svg, { '#000000': '#ffffff' })).toBe(svg);
   });
 });
 

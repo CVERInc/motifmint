@@ -32,7 +32,6 @@
   import {
     bakeBackdrop,
     DEFAULT_BACKDROP,
-    backdropCss,
     backdropVisible,
     readViewBox,
     type BackdropOpts,
@@ -2554,7 +2553,6 @@
                     asciiHtml={asciiColor ? asciiHtml : undefined}
                     lineHeight={previewLineHeight}
                     tight={asciiTight}
-                    busy={asciiBusy}
                   />
                 {:else if asciiColor && asciiHtml}
                   <!-- eslint-disable-next-line svelte/no-at-html-tags — escaped, canvas-derived markup -->
