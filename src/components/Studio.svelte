@@ -96,7 +96,16 @@
 
   let file = $state<File | null>(null);
   let previewUrl = $state<string | null>(null);
-  let pixelsCache = $state<{ buffer: ArrayBuffer; width: number; height: number } | null>(null);
+  // Decoded RGBA of the base image. `buffer` is transferred to the worker on
+  // the first trace and cached there under `key`; afterwards it's null and
+  // re-traces send only the key — no per-param-change copy of a full bitmap.
+  let pixelsCache = $state<{
+    buffer: ArrayBuffer | null;
+    key: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  let nextPixelsKey = 0;
 
   let preset = $state<PresetId>('logo');
   let params = $state<TracerParams>(clonePreset('logo'));
@@ -710,7 +719,8 @@
     try {
       const decoded = await decodeImage(f);
       pixelsCache = {
-        buffer: decoded.data.buffer.slice(0),
+        buffer: decoded.data.buffer,
+        key: ++nextPixelsKey,
         width: decoded.width,
         height: decoded.height,
       };
@@ -763,16 +773,17 @@
       const reqId = ++pendingId;
       pendingTargets.set(reqId, id);
       status = 'converting';
-      const clone = decoded.data.buffer.slice(0);
+      // One-shot trace (layers never re-trace): transfer without copying.
+      const pixels = decoded.data.buffer;
       const req: WorkerRequest = {
         id: reqId,
-        pixels: clone,
+        pixels,
         width: decoded.width,
         height: decoded.height,
         params: { ...params }, // traced with the current preset/params
         optimize,
       };
-      worker.postMessage(req, [clone]);
+      worker.postMessage(req, [pixels]);
     } catch (err) {
       errorMessage = err instanceof Error ? err.message : String(err);
       status = 'error';
@@ -838,16 +849,20 @@
     status = 'converting';
     lastBaseId = ++pendingId;
     pendingTargets.set(lastBaseId, 'base');
-    const clone = pixelsCache.buffer.slice(0);
+    // First trace hands the buffer over (transfer, not copy); the worker keeps
+    // it under `key`, so every later re-trace is a tiny params-only message.
+    const pixels = pixelsCache.buffer ?? undefined;
     const req: WorkerRequest = {
       id: lastBaseId,
-      pixels: clone,
+      pixels,
+      cacheKey: pixelsCache.key,
       width: pixelsCache.width,
       height: pixelsCache.height,
       params: { ...params },
       optimize,
     };
-    worker.postMessage(req, [clone]);
+    worker.postMessage(req, pixels ? [pixels] : []);
+    if (pixels) pixelsCache.buffer = null;
   }
 
   // Bake all edits (recolor / hide / punch-hole / backdrop) into one clean SVG.

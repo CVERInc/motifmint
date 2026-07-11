@@ -8,7 +8,12 @@ declare const self: DedicatedWorkerGlobalScope;
 
 export interface WorkerRequest {
   id: number;
-  pixels: ArrayBuffer; // RGBA bytes, transferred
+  /** RGBA bytes, transferred. May be omitted on a re-trace of the cached image. */
+  pixels?: ArrayBuffer;
+  /** When set alongside `pixels`, the worker keeps them (single slot) so later
+   *  re-traces of the same image — every live-preview param change — can omit
+   *  `pixels` instead of copying + transferring the full buffer each time. */
+  cacheKey?: number;
   width: number;
   height: number;
   params: TracerParams;
@@ -19,11 +24,23 @@ export type WorkerResponse =
   | { id: number; type: 'done'; svg: string; durationMs: number }
   | { id: number; type: 'error'; message: string };
 
+// The one image being re-traced (the base of the composition). Layer traces
+// send their pixels one-shot (no cacheKey) and are never stored.
+let cachedPixels: { key: number; arr: Uint8Array } | null = null;
+
 self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
-  const { id, pixels, width, height, params, optimize } = e.data;
+  const { id, pixels, cacheKey, width, height, params, optimize } = e.data;
   const t0 = performance.now();
   try {
-    const arr = new Uint8Array(pixels);
+    let arr: Uint8Array;
+    if (pixels) {
+      arr = new Uint8Array(pixels);
+      if (cacheKey !== undefined) cachedPixels = { key: cacheKey, arr };
+    } else if (cacheKey !== undefined && cachedPixels?.key === cacheKey) {
+      arr = cachedPixels.arr;
+    } else {
+      throw new Error('trace: request omitted pixels but no cached image matches');
+    }
     let svg = traceImage(arr, width, height, params);
     if (optimize) {
       svg = optimizeSvg(svg);
