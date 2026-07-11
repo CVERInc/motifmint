@@ -43,6 +43,7 @@
     collectRemoved,
     setPathFill,
     setPathRemoved,
+    setPathsRemoved,
     bulkSetFill,
     bulkSetRemoved,
     type PathState,
@@ -190,41 +191,53 @@
   }
 
   // Measure all paths once when taggedSvg changes, caching their bounding boxes.
+  // Deferred one macrotask so the layout-forcing measurement doesn't ride the
+  // same frame that swaps a fresh trace into the preview (live-preview drags).
   $effect(() => {
-    if (taggedSvg && typeof document !== 'undefined') {
-      const wrapper = document.createElement('div');
-      wrapper.style.position = 'fixed';
-      wrapper.style.left = '-99999px';
-      wrapper.style.width = '1px';
-      wrapper.style.height = '1px';
-      wrapper.style.visibility = 'hidden';
-      wrapper.innerHTML = taggedSvg;
-      const svgEl = wrapper.querySelector('svg');
-      if (svgEl) {
-        document.body.appendChild(wrapper);
-        const paths = Array.from(svgEl.querySelectorAll('path[data-orig-idx]')) as SVGPathElement[];
-        const nextBBoxes = new Map<number, { w: number; h: number; x: number; y: number }>();
-        for (const p of paths) {
-          const idxAttr = p.getAttribute('data-orig-idx');
-          if (idxAttr) {
-            const idx = parseInt(idxAttr, 10);
-            try {
-              const bb = p.getBBox();
-              nextBBoxes.set(idx, { w: bb.width, h: bb.height, x: bb.x, y: bb.y });
-            } catch {
-              nextBBoxes.set(idx, { w: 0, h: 0, x: 0, y: 0 });
-            }
+    const cur = taggedSvg;
+    if (!cur || typeof document === 'undefined') {
+      pathBBoxes = new Map();
+      return;
+    }
+    const timer = setTimeout(() => {
+      pathBBoxes = measurePathBBoxes(cur);
+    }, 0);
+    return () => clearTimeout(timer);
+  });
+
+  function measurePathBBoxes(
+    tagged: string,
+  ): Map<number, { w: number; h: number; x: number; y: number }> {
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'fixed';
+    wrapper.style.left = '-99999px';
+    wrapper.style.width = '1px';
+    wrapper.style.height = '1px';
+    wrapper.style.visibility = 'hidden';
+    wrapper.innerHTML = tagged;
+    const svgEl = wrapper.querySelector('svg');
+    if (!svgEl) return new Map();
+    document.body.appendChild(wrapper);
+    try {
+      const paths = Array.from(svgEl.querySelectorAll('path[data-orig-idx]')) as SVGPathElement[];
+      const nextBBoxes = new Map<number, { w: number; h: number; x: number; y: number }>();
+      for (const p of paths) {
+        const idxAttr = p.getAttribute('data-orig-idx');
+        if (idxAttr) {
+          const idx = parseInt(idxAttr, 10);
+          try {
+            const bb = p.getBBox();
+            nextBBoxes.set(idx, { w: bb.width, h: bb.height, x: bb.x, y: bb.y });
+          } catch {
+            nextBBoxes.set(idx, { w: 0, h: 0, x: 0, y: 0 });
           }
         }
-        pathBBoxes = nextBBoxes;
-        wrapper.remove();
-      } else {
-        pathBBoxes = new Map();
       }
-    } else {
-      pathBBoxes = new Map();
+      return nextBBoxes;
+    } finally {
+      wrapper.remove();
     }
-  });
+  }
 
   const autoHiddenIdxs = $derived.by(() => {
     const set = new Set<number>();
@@ -394,19 +407,21 @@
   });
 
   // Bidirectional hover sync: highlight the canvas path when hovering a
-  // Layers row, and vice versa.
+  // Layers row, and vice versa. Only the previously-marked and newly-hovered
+  // elements are touched — sweeping every path per hover change janks on big
+  // traces. (Detached leftovers after an {@html} re-render are harmless.)
+  let hoverMarked: Element[] = [];
   $effect(() => {
     if (typeof document === 'undefined') return;
     const idx = hoveredPathIdx;
-    const wraps = document.querySelectorAll('.result-preview svg path, .svg-layer svg path');
-    wraps.forEach((p) => {
-      const pidx = parseInt((p as Element).getAttribute('data-orig-idx') ?? '-1', 10);
-      if (pidx === idx) {
-        (p as SVGElement).setAttribute('data-hovered', 'true');
-      } else {
-        (p as SVGElement).removeAttribute('data-hovered');
-      }
-    });
+    for (const el of hoverMarked) el.removeAttribute('data-hovered');
+    hoverMarked = [];
+    if (idx == null) return;
+    const matches = document.querySelectorAll(
+      `.result-preview svg path[data-orig-idx="${idx}"], .svg-layer svg path[data-orig-idx="${idx}"]`,
+    );
+    matches.forEach((p) => p.setAttribute('data-hovered', 'true'));
+    hoverMarked = Array.from(matches);
   });
 
   let worker: Worker | null = null;
@@ -677,11 +692,7 @@
     }
 
     if (toRemove.length > 0) {
-      let nextStates = pathStates;
-      for (const idx of toRemove) {
-        nextStates = setPathRemoved(nextStates, idx, true);
-      }
-      pathStates = nextStates;
+      pathStates = setPathsRemoved(pathStates, toRemove, true);
     }
   }
 

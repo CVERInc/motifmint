@@ -96,17 +96,15 @@ export function collectRemoved(states: Map<number, PathState>): number[] {
   return out;
 }
 
-/** Returns a new Map with the path's state cleaned up if it becomes empty. */
-function compactState(states: Map<number, PathState>, idx: number): Map<number, PathState> {
-  const next = new Map(states);
-  const s = next.get(idx);
-  if (!s) return next;
-  if (s.fill === undefined && !s.removed) {
-    next.delete(idx);
-  } else {
-    next.set(idx, s);
-  }
-  return next;
+/**
+ * Write a patch into `next` IN PLACE, dropping the entry when it becomes
+ * empty. Callers clone once and may then write any number of paths — bulk
+ * operations stay O(paths), not O(paths × states).
+ */
+function writeState(next: Map<number, PathState>, idx: number, patch: Partial<PathState>): void {
+  const cur = { ...(next.get(idx) ?? {}), ...patch };
+  if (cur.fill === undefined && !cur.removed) next.delete(idx);
+  else next.set(idx, cur);
 }
 
 export function setPathFill(
@@ -115,10 +113,8 @@ export function setPathFill(
   fill: string | undefined,
 ): Map<number, PathState> {
   const next = new Map(states);
-  const cur = { ...(next.get(idx) ?? {}) };
-  cur.fill = fill;
-  next.set(idx, cur);
-  return compactState(next, idx);
+  writeState(next, idx, { fill });
+  return next;
 }
 
 export function setPathRemoved(
@@ -127,10 +123,19 @@ export function setPathRemoved(
   removed: boolean,
 ): Map<number, PathState> {
   const next = new Map(states);
-  const cur = { ...(next.get(idx) ?? {}) };
-  cur.removed = removed;
-  next.set(idx, cur);
-  return compactState(next, idx);
+  writeState(next, idx, { removed });
+  return next;
+}
+
+/** Mark a whole set of paths (e.g. a marquee selection) removed / restored. */
+export function setPathsRemoved(
+  states: Map<number, PathState>,
+  idxs: Iterable<number>,
+  removed: boolean,
+): Map<number, PathState> {
+  const next = new Map(states);
+  for (const idx of idxs) writeState(next, idx, { removed });
+  return next;
 }
 
 /** Apply a fill override to every path whose originalFill matches. */
@@ -140,12 +145,10 @@ export function bulkSetFill(
   originalFill: string,
   fill: string | undefined,
 ): Map<number, PathState> {
-  let next = states;
   const key = originalFill.toLowerCase();
+  const next = new Map(states);
   for (const p of pathList) {
-    if (p.originalFill === key) {
-      next = setPathFill(next, p.origIdx, fill);
-    }
+    if (p.originalFill === key) writeState(next, p.origIdx, { fill });
   }
   return next;
 }
@@ -157,12 +160,10 @@ export function bulkSetRemoved(
   originalFill: string,
   removed: boolean,
 ): Map<number, PathState> {
-  let next = states;
   const key = originalFill.toLowerCase();
+  const next = new Map(states);
   for (const p of pathList) {
-    if (p.originalFill === key) {
-      next = setPathRemoved(next, p.origIdx, removed);
-    }
+    if (p.originalFill === key) writeState(next, p.origIdx, { removed });
   }
   return next;
 }

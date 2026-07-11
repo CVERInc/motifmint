@@ -33,7 +33,19 @@ export function injectOrigIdx(svg: string): string {
 export function removePaths(svg: string, targetOrigIndices: number[]): string {
   if (targetOrigIndices.length === 0) return svg;
   if (typeof document === 'undefined') return svg;
+  // Pure in (svg, targets) but expensive: off-DOM mount + per-target geometry
+  // queries against every path. The display pipeline re-runs it with identical
+  // inputs on every effect/backdrop tweak — one memo slot absorbs those.
+  const key = targetOrigIndices.join(',');
+  if (memoized && memoized.svg === svg && memoized.key === key) return memoized.out;
+  const out = removePathsUncached(svg, targetOrigIndices);
+  memoized = { svg, key, out };
+  return out;
+}
 
+let memoized: { svg: string; key: string; out: string } | null = null;
+
+function removePathsUncached(svg: string, targetOrigIndices: number[]): string {
   const wrapper = document.createElement('div');
   wrapper.style.position = 'fixed';
   wrapper.style.left = '-99999px';
