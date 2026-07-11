@@ -150,7 +150,6 @@
   class="compare"
   class:has-bg={!!bg}
   class:square={square}
-  class:original-visible={position > 0}
   style:--bg-color={bg ?? 'transparent'}
   style:--bg-radius={radius}
   style:--bg-padding={padding}
@@ -235,18 +234,6 @@
     max-height: 560px;
     max-width: 560px;
     margin: 0 auto;
-  }
-
-  /* Reusable checker pattern */
-  .checker {
-    background:
-      linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
-      linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
-      linear-gradient(-45deg, transparent 75%, #f0f0f0 75%),
-      white;
-    background-size: 16px 16px, 16px 16px, 16px 16px, 16px 16px, auto;
-    background-position: 0 0, 0 8px, 8px -8px, -8px 0, 0 0;
   }
 
   /* Backdrop layer — belongs to the SVG side only. */

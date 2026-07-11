@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  generateHtmlSnippet,
-  generateWebManifest,
-  ICON_SPECS,
-  ICO_SIZES,
-  packFileList,
-} from './icon-pack';
+import { generateHtmlSnippet, generateWebManifest, ICON_SPECS, ICO_SIZES } from './icon-pack';
 
 describe('ICON_SPECS', () => {
   it('covers the standard favicon/app-icon sizes', () => {
@@ -67,15 +61,5 @@ describe('generateHtmlSnippet', () => {
     expect(snip).toContain('rel="apple-touch-icon"');
     expect(snip).toContain('rel="manifest"');
     expect(snip).toContain('content="#abcdef"');
-  });
-});
-
-describe('packFileList', () => {
-  it('lists the ico, every png, the manifest and a readme', () => {
-    const files = packFileList();
-    expect(files).toContain('favicon.ico');
-    expect(files).toContain('site.webmanifest');
-    expect(files).toContain('README.txt');
-    expect(files).toContain('maskable-512.png');
   });
 });

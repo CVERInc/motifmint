@@ -92,13 +92,3 @@ export function generateHtmlSnippet(opts?: Pick<ManifestOpts, 'themeColor'>): st
     `<meta name="theme-color" content="${theme}">`,
   ].join('\n');
 }
-
-/** Everything that goes into the downloadable pack, by filename. */
-export function packFileList(): string[] {
-  return [
-    'favicon.ico',
-    ...ICON_SPECS.map((s) => s.file),
-    'site.webmanifest',
-    'README.txt',
-  ];
-}
