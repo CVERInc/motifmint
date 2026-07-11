@@ -1,9 +1,4 @@
-function parseHex(h: string): [number, number, number] | null {
-  const m = h.match(/^#([0-9a-f]{6})(?:[0-9a-f]{2})?$/i);
-  if (!m) return null;
-  const v = parseInt(m[1], 16);
-  return [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff];
-}
+import { hexToRgb } from './color';
 
 function chebyshev(a: [number, number, number], b: [number, number, number]): number {
   return Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]), Math.abs(a[2] - b[2]));
@@ -31,7 +26,7 @@ export function mergeNearColors(svg: string, threshold: number = 16): string {
   const repForColor: Record<string, string> = {};
   const reps: { hex: string; rgb: [number, number, number] }[] = [];
   for (const c of colors) {
-    const pc = parseHex(c);
+    const pc = hexToRgb(c);
     if (!pc) {
       repForColor[c] = c;
       continue;

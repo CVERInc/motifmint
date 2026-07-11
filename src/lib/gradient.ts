@@ -12,6 +12,7 @@
  * never sees these defs and can't mangle the gradient ids.
  */
 import { readViewBox } from './backdrop';
+import { hexToRgb } from './color';
 import type { PathInfo } from './path-state';
 
 export interface GradientStop {
@@ -127,13 +128,13 @@ export function applyColorGradients(
 
 /** A darker shade of a `#rrggbb` hex (factor 0–1; 0.6 ≈ 40% darker). */
 export function shade(hex: string, factor: number): string {
-  const m = hex.replace('#', '').match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
-  if (!m) return hex;
-  const ch = (h: string) =>
-    Math.max(0, Math.min(255, Math.round(parseInt(h, 16) * factor)))
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  const ch = (v: number) =>
+    Math.max(0, Math.min(255, Math.round(v * factor)))
       .toString(16)
       .padStart(2, '0');
-  return `#${ch(m[1])}${ch(m[2])}${ch(m[3])}`;
+  return `#${ch(rgb[0])}${ch(rgb[1])}${ch(rgb[2])}`;
 }
 
 /** Built-in gradient presets (the trailing "mono" uses the group's own colour). */

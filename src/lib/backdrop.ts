@@ -5,6 +5,8 @@
  *
  * No explicit on/off toggle — `alpha === 0` means "no visible backdrop".
  */
+import { hexToRgb } from './color';
+
 export type Aspect = 'original' | 'square';
 
 export interface BackdropOpts {
@@ -36,12 +38,9 @@ export function backdropVisible(b: BackdropOpts): boolean {
 /** Convert color + alpha into a CSS rgba() string, or "transparent" if alpha=0. */
 export function backdropCss(b: BackdropOpts): string {
   if (b.alpha === 0) return 'transparent';
-  const hex = b.color.replace('#', '');
-  if (hex.length !== 6) return b.color;
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b2 = parseInt(hex.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b2}, ${(b.alpha / 100).toFixed(3)})`;
+  const rgb = hexToRgb(b.color);
+  if (!rgb) return b.color;
+  return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${(b.alpha / 100).toFixed(3)})`;
 }
 
 /** 8-char hex (#rrggbbaa) form for embedding in SVG. */
