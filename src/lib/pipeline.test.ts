@@ -2,7 +2,8 @@
  * Integration tests: chain the real lib functions exactly as the studio's
  * buildFinalSvg() / displaySvg do, to prove the features compose correctly.
  * (DOM-only steps — removePaths, canvas rasterize — are excluded; they have
- * their own no-DOM guards and run in CI's build / the maintainer's click-test.)
+ * their own no-DOM guards. CI does not execute them — `astro build` only
+ * bundles them — so they are covered only by the maintainer's click-test.)
  */
 import { describe, expect, it } from 'vitest';
 import { injectOrigIdx } from './punch-hole';
