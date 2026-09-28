@@ -5,7 +5,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Built with Astro](https://img.shields.io/badge/Built%20with-Astro-BC52EE)](https://astro.build/)
-[![Engine: VTracer](https://img.shields.io/badge/Engine-VTracer%20(WASM)-orange)](https://github.com/visioncortex/vtracer)
+[![Engine: VTracer](<https://img.shields.io/badge/Engine-VTracer%20(WASM)-orange>)](https://github.com/visioncortex/vtracer)
 
 **Live demo:** [oss.cver.net/motifmint](https://oss.cver.net/motifmint/) · **License:** MIT · **No server, no upload, no signup**
 
@@ -37,6 +37,7 @@ motifmint:
 ## Features
 
 **Trace**
+
 - Drag-and-drop or click to choose a file
 - Four presets — **Logo** (flat colors, crisp edges), **Sketch** (high-contrast
   B/W), **Photo** (many colors, smooth curves), **Pixel art** (sharp edges)
@@ -44,6 +45,7 @@ motifmint:
 - Optional SVGO pass (multipass, viewBox- and fill-preserving)
 
 **Edit (the studio)**
+
 - **Compose multiple images** into one mark — add image layers, position
   (scale / offset), reorder, show-hide
 - **Recolor** by color group or per individual shape
@@ -56,6 +58,7 @@ motifmint:
 - **Undo / redo** (Cmd/Ctrl+Z) and a before/after **compare slider**
 
 **Export**
+
 - **SVG** (clean, optimized)
 - **Raster** — PNG / WebP / JPG at 128–1024px or source resolution, plus a
   one-click **@1×/@2×/@3× zip**
@@ -67,6 +70,7 @@ motifmint:
   HTML-comment easter eggs (copy or `.txt`, adjustable width)
 
 **Always**
+
 - No upload, no signup, **zero telemetry**
 - **Installable PWA**, works offline once loaded
 - Landing copy in English / 日本語 / 繁體中文 / Español — the studio's tool UI itself is English for now (full translation is on the [roadmap](#roadmap))
@@ -95,15 +99,15 @@ Pages, or your own nginx. **No server runtime is required.**
 
 ## Tech stack
 
-| Layer | Choice | Why |
-|---|---|---|
-| Engine | [VTracer](https://github.com/visioncortex/vtracer) (Rust → WASM via `wasm_vtracer`) | Modern color tracing, MIT |
-| Framework | [Astro](https://astro.build/) + [Svelte 5](https://svelte.dev/) islands | Static-first, tiny initial bundle |
-| Post-processing | [SVGO](https://svgo.dev/) (lazy-loaded) | The de-facto SVG optimizer |
-| Zip / ICO | [fflate](https://github.com/101arrowz/fflate) + hand-rolled ICO | Pure JS, no extra WASM |
-| Icons | [Lucide](https://lucide.dev/) | Clean line icons, ISC |
-| Tests | [Vitest](https://vitest.dev/) | Pure-lib unit tests |
-| Deployment | Static (Cloudflare Pages, Netlify, …) | Zero infra |
+| Layer           | Choice                                                                              | Why                               |
+| --------------- | ----------------------------------------------------------------------------------- | --------------------------------- |
+| Engine          | [VTracer](https://github.com/visioncortex/vtracer) (Rust → WASM via `wasm_vtracer`) | Modern color tracing, MIT         |
+| Framework       | [Astro](https://astro.build/) + [Svelte 5](https://svelte.dev/) islands             | Static-first, tiny initial bundle |
+| Post-processing | [SVGO](https://svgo.dev/) (lazy-loaded)                                             | The de-facto SVG optimizer        |
+| Zip / ICO       | [fflate](https://github.com/101arrowz/fflate) + hand-rolled ICO                     | Pure JS, no extra WASM            |
+| Icons           | [Lucide](https://lucide.dev/)                                                       | Clean line icons, ISC             |
+| Tests           | [Vitest](https://vitest.dev/)                                                       | Pure-lib unit tests               |
+| Deployment      | Static (Cloudflare Pages, Netlify, …)                                               | Zero infra                        |
 
 ## Project layout
 

@@ -3,8 +3,7 @@ import { mergeNearColors, normalizeFills, stripBoundingBoxArtifact } from './str
 
 describe('mergeNearColors', () => {
   it('merges near-black shades into the first-seen representative', () => {
-    const svg =
-      '<svg><path fill="#020202"/><path fill="#040404"/><path fill="#060606"/></svg>';
+    const svg = '<svg><path fill="#020202"/><path fill="#040404"/><path fill="#060606"/></svg>';
     const out = mergeNearColors(svg, 16);
     // all collapse to the first one
     expect(out.match(/fill="#020202"/g)).toHaveLength(3);

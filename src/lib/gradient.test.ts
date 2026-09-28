@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  applyColorGradients,
-  gradId,
-  shade,
-  type GradientSpec,
-} from './gradient';
+import { applyColorGradients, gradId, shade, type GradientSpec } from './gradient';
 import type { PathInfo } from './path-state';
 
 describe('gradId', () => {
@@ -118,7 +113,7 @@ describe('applyColorGradients', () => {
       ],
     };
     const out = applyColorGradients(SVG, new Map([['#ff0000', three]]), PATHS);
-    expect((out.match(/<stop /g) ?? [])).toHaveLength(3);
+    expect(out.match(/<stop /g) ?? []).toHaveLength(3);
     expect(out).toContain('offset="50%"');
   });
 });

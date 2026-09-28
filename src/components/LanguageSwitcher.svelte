@@ -38,7 +38,9 @@
     font-family: inherit;
     font-size: 0.85rem;
     cursor: pointer;
-    transition: border-color 0.2s ease, background 0.2s ease;
+    transition:
+      border-color 0.2s ease,
+      background 0.2s ease;
   }
   .lang-switch select:hover {
     border-color: var(--accent);

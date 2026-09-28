@@ -53,12 +53,13 @@ export function backdropHex(b: BackdropOpts): string {
   return `#${hex}${aa}`;
 }
 
-export function readViewBox(
-  svg: string,
-): { x: number; y: number; w: number; h: number } | null {
+export function readViewBox(svg: string): { x: number; y: number; w: number; h: number } | null {
   const m = svg.match(/viewBox\s*=\s*"([^"]+)"/i);
   if (m) {
-    const parts = m[1].trim().split(/[\s,]+/).map(Number);
+    const parts = m[1]
+      .trim()
+      .split(/[\s,]+/)
+      .map(Number);
     if (parts.length === 4 && parts.every((n) => Number.isFinite(n))) {
       return { x: parts[0], y: parts[1], w: parts[2], h: parts[3] };
     }
@@ -99,10 +100,7 @@ export function bakeBackdrop(svg: string, opts: BackdropOpts): string {
 
   let out = svg;
   if (/viewBox\s*=/i.test(out)) {
-    out = out.replace(
-      /viewBox\s*=\s*"[^"]+"/i,
-      `viewBox="${newX} ${newY} ${newW} ${newH}"`,
-    );
+    out = out.replace(/viewBox\s*=\s*"[^"]+"/i, `viewBox="${newX} ${newY} ${newW} ${newH}"`);
   } else {
     out = out.replace(/<svg\b/i, `<svg viewBox="${newX} ${newY} ${newW} ${newH}"`);
   }

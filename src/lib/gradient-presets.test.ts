@@ -1,9 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  addGradientPreset,
-  loadGradientPresets,
-  removeGradientPreset,
-} from './gradient-presets';
+import { addGradientPreset, loadGradientPresets, removeGradientPreset } from './gradient-presets';
 import type { GradientSpec } from './gradient';
 
 // Minimal localStorage stub (node test env has none).

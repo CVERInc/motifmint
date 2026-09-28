@@ -10,8 +10,7 @@ import { formatBytes } from './format';
 import type { PathInfo } from './path-state';
 
 describe('gradient angle edges', () => {
-  const SVG =
-    '<svg viewBox="0 0 100 100"><path data-orig-idx="0" fill="#ff0000" d="M0 0"/></svg>';
+  const SVG = '<svg viewBox="0 0 100 100"><path data-orig-idx="0" fill="#ff0000" d="M0 0"/></svg>';
   const PATHS: PathInfo[] = [{ origIdx: 0, originalFill: '#ff0000' }];
 
   it('0deg is horizontal: x spans 0→100, y constant at center', () => {

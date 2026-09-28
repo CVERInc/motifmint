@@ -10,13 +10,13 @@ Issues, pull requests, translations — all welcome.
 
 ### Types of contribution
 
-| Type | How |
-|---|---|
-| Bug reports | Open an [Issue](https://github.com/CVERInc/motifmint/issues), include a reproducible image or steps |
-| Feature requests | Discuss in an Issue first if non-trivial |
-| Translations | PR — see [Adding a new language](#-adding-a-new-language) |
-| New presets | PR — see [Adding a new preset](#-adding-a-new-preset) |
-| Docs / README | PR directly |
+| Type             | How                                                                                                 |
+| ---------------- | --------------------------------------------------------------------------------------------------- |
+| Bug reports      | Open an [Issue](https://github.com/CVERInc/motifmint/issues), include a reproducible image or steps |
+| Feature requests | Discuss in an Issue first if non-trivial                                                            |
+| Translations     | PR — see [Adding a new language](#-adding-a-new-language)                                           |
+| New presets      | PR — see [Adding a new preset](#-adding-a-new-preset)                                               |
+| Docs / README    | PR directly                                                                                         |
 
 ### Local development
 
@@ -103,13 +103,13 @@ Do **not** open a public issue for security reports. See
 
 ### 貢献の種類
 
-| 種類 | 方法 |
-|---|---|
-| バグ報告 | [Issue](https://github.com/CVERInc/motifmint/issues) を作成、再現可能な画像 / 手順を添える |
-| 機能提案 | 大きい変更は事前に Issue で議論 |
-| 翻訳 | PR — [新言語の追加](#-新言語の追加) を参照 |
-| 新プリセット | PR — [新プリセットの追加](#-新プリセットの追加) を参照 |
-| ドキュメント | 直接 PR |
+| 種類         | 方法                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------ |
+| バグ報告     | [Issue](https://github.com/CVERInc/motifmint/issues) を作成、再現可能な画像 / 手順を添える |
+| 機能提案     | 大きい変更は事前に Issue で議論                                                            |
+| 翻訳         | PR — [新言語の追加](#-新言語の追加) を参照                                                 |
+| 新プリセット | PR — [新プリセットの追加](#-新プリセットの追加) を参照                                     |
+| ドキュメント | 直接 PR                                                                                    |
 
 ### ローカル開発
 

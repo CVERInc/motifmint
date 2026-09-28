@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  toComponentName,
-  toDataUri,
-  toReactComponent,
-  toVueComponent,
-} from './copy-as';
+import { toComponentName, toDataUri, toReactComponent, toVueComponent } from './copy-as';
 
 describe('toComponentName', () => {
   it('PascalCases a filename', () => {

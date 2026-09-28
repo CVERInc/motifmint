@@ -68,7 +68,7 @@ describe('composeLayers', () => {
   it('merges multiple layers into one square canvas with <g> wrappers', () => {
     const out = composeLayers([a, b], 1000);
     expect(out).toContain('viewBox="0 0 1000 1000"');
-    expect((out.match(/<g transform=/g) ?? [])).toHaveLength(2);
+    expect(out.match(/<g transform=/g) ?? []).toHaveLength(2);
     expect(out).toContain('<path d="A"/>');
     expect(out).toContain('<path d="B"/>');
   });
