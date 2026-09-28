@@ -6,7 +6,6 @@ import {
   bakeBackdrop,
   DEFAULT_BACKDROP,
   readViewBox,
-  type BackdropOpts,
 } from './backdrop';
 
 describe('backdropVisible', () => {
