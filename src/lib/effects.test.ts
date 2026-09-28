@@ -12,12 +12,16 @@ describe('hasEffects', () => {
     expect(hasEffects({})).toBe(false);
     expect(hasEffects({ outline: { width: 0, color: '#000' } })).toBe(false);
     expect(hasEffects({ glow: { blur: 0, color: '#fff', opacity: 1 } })).toBe(false);
-    expect(hasEffects({ shadow: { blur: 0, dx: 0, dy: 0, color: '#000', opacity: 0 } })).toBe(false);
+    expect(hasEffects({ shadow: { blur: 0, dx: 0, dy: 0, color: '#000', opacity: 0 } })).toBe(
+      false,
+    );
   });
 
   it('is true when any effect is active', () => {
     expect(hasEffects({ outline: { width: 2, color: '#000' } })).toBe(true);
-    expect(hasEffects({ shadow: { blur: 3, dx: 0, dy: 2, color: '#000', opacity: 0.5 } })).toBe(true);
+    expect(hasEffects({ shadow: { blur: 3, dx: 0, dy: 2, color: '#000', opacity: 0.5 } })).toBe(
+      true,
+    );
     expect(hasEffects({ glow: { blur: 4, color: '#fff', opacity: 0.8 } })).toBe(true);
   });
 });

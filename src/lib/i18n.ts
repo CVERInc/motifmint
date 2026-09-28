@@ -34,7 +34,8 @@ const en = {
     'Turn any image into a clean, recolorable SVG logo or icon — in your browser. No upload, no signup, open source.',
 
   'dropzone.cta': 'Drop an image here, or click to choose',
-  'dropzone.hint': 'PNG · JPG · WebP · BMP — converted locally in your browser, nothing is uploaded.',
+  'dropzone.hint':
+    'PNG · JPG · WebP · BMP — converted locally in your browser, nothing is uploaded.',
   'dropzone.change': 'Choose different file',
 
   'action.convert': 'Convert',
@@ -121,7 +122,8 @@ const zhTW: Dict = {
   'action.tracing': '描繪中…',
   'action.download': '下載',
   'action.iconPack': '圖示包',
-  'action.iconPack.title': '下載 favicon 與 App 圖示包（.ico、PNG、manifest、HTML 片段）的 zip 壓縮檔',
+  'action.iconPack.title':
+    '下載 favicon 與 App 圖示包（.ico、PNG、manifest、HTML 片段）的 zip 壓縮檔',
   'action.reset': '重設',
   'action.restoreAll': '全部還原',
   'action.save': '儲存',
@@ -151,7 +153,8 @@ const es: Dict = {
     'Convierte cualquier imagen en un logo o icono SVG limpio y recoloreable — en tu navegador. Sin subidas, sin registro, código abierto.',
 
   'dropzone.cta': 'Arrastra una imagen aquí o haz clic para elegir',
-  'dropzone.hint': 'PNG · JPG · WebP · BMP — se convierten localmente en tu navegador, no se sube nada.',
+  'dropzone.hint':
+    'PNG · JPG · WebP · BMP — se convierten localmente en tu navegador, no se sube nada.',
   'dropzone.change': 'Elegir otro archivo',
 
   'action.convert': 'Convertir',
@@ -215,14 +218,10 @@ export function isLocale(value: string): value is Locale {
  * Best supported locale for a list of preferences (defaults to the browser's).
  * Matches exact tags first ("zh-TW"), then the base language ("zh", "ja").
  */
-export function detectLocale(
-  preferred?: readonly string[],
-): Locale {
+export function detectLocale(preferred?: readonly string[]): Locale {
   const prefs =
     preferred ??
-    (typeof navigator !== 'undefined'
-      ? navigator.languages ?? [navigator.language]
-      : []);
+    (typeof navigator !== 'undefined' ? (navigator.languages ?? [navigator.language]) : []);
   for (const raw of prefs) {
     if (!raw) continue;
     if (isLocale(raw)) return raw;

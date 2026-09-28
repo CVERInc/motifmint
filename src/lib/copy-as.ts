@@ -65,7 +65,10 @@ function toReactStyleObject(style: string): string {
     .map((decl) => {
       const i = decl.indexOf(':');
       if (i === -1) return null;
-      const key = decl.slice(0, i).trim().replace(/-([a-z])/g, (_m, c: string) => c.toUpperCase());
+      const key = decl
+        .slice(0, i)
+        .trim()
+        .replace(/-([a-z])/g, (_m, c: string) => c.toUpperCase());
       const val = decl.slice(i + 1).trim();
       return `${key}: '${val}'`;
     })
@@ -75,13 +78,10 @@ function toReactStyleObject(style: string): string {
 
 /** Rewrite an SVG element's attributes for JSX. */
 function jsxifyAttrs(attrs: string): string {
-  return attrs.replace(
-    /([a-zA-Z_][\w:-]*)\s*=\s*"([^"]*)"/g,
-    (_m, name: string, value: string) => {
-      if (name.toLowerCase() === 'style') return `style=${toReactStyleObject(value)}`;
-      return `${toReactAttrName(name)}="${value}"`;
-    },
-  );
+  return attrs.replace(/([a-zA-Z_][\w:-]*)\s*=\s*"([^"]*)"/g, (_m, name: string, value: string) => {
+    if (name.toLowerCase() === 'style') return `style=${toReactStyleObject(value)}`;
+    return `${toReactAttrName(name)}="${value}"`;
+  });
 }
 
 /**
@@ -95,10 +95,13 @@ export function toReactComponent(svg: string, name = 'Icon'): string {
     .replace(/<!--[\s\S]*?-->/g, '')
     .trim()
     // rewrite attributes on every tag
-    .replace(/<([a-zA-Z][\w-]*)((?:\s+[^<>]*?)?)(\/?)>/g, (_m, tag: string, attrs: string, close: string) => {
-      const rewritten = jsxifyAttrs(attrs);
-      return `<${tag}${rewritten}${close}>`;
-    })
+    .replace(
+      /<([a-zA-Z][\w-]*)((?:\s+[^<>]*?)?)(\/?)>/g,
+      (_m, tag: string, attrs: string, close: string) => {
+        const rewritten = jsxifyAttrs(attrs);
+        return `<${tag}${rewritten}${close}>`;
+      },
+    )
     // spread props onto the root svg
     .replace(/<svg\b/, '<svg {...props}');
   return (

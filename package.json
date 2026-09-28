@@ -22,6 +22,9 @@
     "wasm",
     "image-tracing"
   ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
@@ -29,16 +32,17 @@
     "check": "astro check",
     "test": "vitest run",
     "test:watch": "vitest",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@astrojs/svelte": "^7.0.0",
     "@lucide/svelte": "^1.16.0",
     "astro": "^5.0.0",
-    "bleedblend": "latest",
+    "bleedblend": "^2.2.2",
     "fflate": "^0.8.3",
     "svelte": "^5.0.0",
-    "svgo": "^3.3.2",
+    "svgo": "^3.3.5",
     "wasm_vtracer": "^0.2.0"
   },
   "devDependencies": {

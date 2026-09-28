@@ -30,7 +30,9 @@ const canonical = ogUrl;
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="generator" content={Astro.generator} />
     {/* bleedblend/auto — zero-config Safari chrome tinting (status bar + URL bar) */}
-    <script>import 'bleedblend/auto';</script>
+    <script>
+      import 'bleedblend/auto';
+    </script>
     <meta name="description" content={description} />
     <title>{title}</title>
     <link rel="canonical" href={canonical} />
@@ -56,11 +58,14 @@ const canonical = ogUrl;
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<!-- Only the variants actually used: Comfortaa is brand-only (700); Nunito
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Only the variants actually used: Comfortaa is brand-only (700); Nunito
          carries body text at 400/600/700 plus 400-italic. -->
-    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@700&family=Nunito:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@700&family=Nunito:ital,wght@0,400;0,600;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <header class="site-header">
@@ -73,8 +78,18 @@ const canonical = ogUrl;
       </div>
       <div class="nav-right">
         <LanguageSwitcher client:load />
-        <a href={repo} class="gh-link" target="_blank" rel="noopener" aria-label="GitHub repository">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        <a
+          href={repo}
+          class="gh-link"
+          target="_blank"
+          rel="noopener"
+          aria-label="GitHub repository"
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"
+            ><path
+              d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+            ></path></svg
+          >
           <span>GitHub</span>
         </a>
       </div>
@@ -92,23 +107,53 @@ const canonical = ogUrl;
 
     <footer class="site-footer">
       <div class="footer-links">
-        <a href="https://cver.net/legal/terms" class="link-underline" target="_blank" rel="noopener">Terms of Service</a>
+        <a href="https://cver.net/legal/terms" class="link-underline" target="_blank" rel="noopener"
+          >Terms of Service</a
+        >
         <span class="footer-sep" aria-hidden="true">|</span>
-        <a href="https://cver.net/legal/privacy" class="link-underline" target="_blank" rel="noopener">Privacy Policy</a>
+        <a
+          href="https://cver.net/legal/privacy"
+          class="link-underline"
+          target="_blank"
+          rel="noopener">Privacy Policy</a
+        >
         <span class="footer-sep" aria-hidden="true">|</span>
-        <a href="https://cver.net/contact" class="link-underline" target="_blank" rel="noopener">Contact Us</a>
+        <a href="https://cver.net/contact" class="link-underline" target="_blank" rel="noopener"
+          >Contact Us</a
+        >
       </div>
 
-      <a href="https://cver.net/" class="footer-logo" target="_blank" rel="noopener" aria-label="CVER Inc.">
-        <img src="https://cver.net/cver-logo-small.png" alt="CVER" width="48" height="48" draggable="false" />
+      <a
+        href="https://cver.net/"
+        class="footer-logo"
+        target="_blank"
+        rel="noopener"
+        aria-label="CVER Inc."
+      >
+        <img
+          src="https://cver.net/cver-logo-small.png"
+          alt="CVER"
+          width="48"
+          height="48"
+          draggable="false"
+        />
       </a>
 
       <div class="footer-links secondary">
-        <a href="https://cver.net/about" class="link-underline" target="_blank" rel="noopener">CVER.NET © 2011–2026 CVER Inc.</a>
+        <a href="https://cver.net/about" class="link-underline" target="_blank" rel="noopener"
+          >CVER.NET © 2011–2026 CVER Inc.</a
+        >
         <span class="footer-sep" aria-hidden="true">|</span>
-        <a href={`${repo}/blob/main/LICENSE`} class="link-underline" target="_blank" rel="noopener">MIT License</a>
+        <a href={`${repo}/blob/main/LICENSE`} class="link-underline" target="_blank" rel="noopener"
+          >MIT License</a
+        >
         <span class="footer-sep" aria-hidden="true">|</span>
-        <a href="https://github.com/visioncortex/vtracer" class="link-underline" target="_blank" rel="noopener">Powered by VTracer (WASM)</a>
+        <a
+          href="https://github.com/visioncortex/vtracer"
+          class="link-underline"
+          target="_blank"
+          rel="noopener">Powered by VTracer (WASM)</a
+        >
       </div>
     </footer>
 
@@ -158,14 +203,13 @@ const canonical = ogUrl;
         flex: 1 0 auto;
       }
       body::before {
-        content: "";
+        content: '';
         position: fixed;
         inset: 0;
         z-index: -1;
         background:
           radial-gradient(circle at 10% 20%, rgba(10, 140, 142, 0.15) 0%, transparent 40%),
-          radial-gradient(circle at 90% 80%, rgba(226, 114, 91, 0.15) 0%, transparent 40%),
-          #052829;
+          radial-gradient(circle at 90% 80%, rgba(226, 114, 91, 0.15) 0%, transparent 40%), #052829;
         background-size: 100% 100%;
       }
       a {
@@ -185,7 +229,7 @@ const canonical = ogUrl;
         corner-shape: var(--corner);
         border: 1px solid var(--border);
       }
-      
+
       /* Glassmorphic Panel Styles */
       .glass {
         background: rgba(255, 255, 255, 0.08);
@@ -194,11 +238,13 @@ const canonical = ogUrl;
         border: 1px solid rgba(255, 255, 255, 0.12);
         box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
       }
-      
+
       a.glass {
-        transition: background 200ms ease, border-color 200ms ease;
+        transition:
+          background 200ms ease,
+          border-color 200ms ease;
       }
-      
+
       a.glass:hover {
         background: rgba(255, 255, 255, 0.14);
         border-color: rgba(255, 255, 255, 0.2);
@@ -249,7 +295,9 @@ const canonical = ogUrl;
         text-decoration: none;
         color: var(--text);
       }
-      .brand:hover { text-decoration: none; }
+      .brand:hover {
+        text-decoration: none;
+      }
       .brand-name {
         font-family: 'Comfortaa', var(--font-sans);
         font-size: 1.4rem;
@@ -279,14 +327,19 @@ const canonical = ogUrl;
         corner-shape: var(--corner);
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid var(--border);
-        transition: background 0.2s ease, border-color 0.2s ease;
+        transition:
+          background 0.2s ease,
+          border-color 0.2s ease;
       }
       .gh-link:hover {
         background: rgba(255, 255, 255, 0.1);
         border-color: var(--accent);
         text-decoration: none;
       }
-      .gh-link svg { width: 18px; height: 18px; }
+      .gh-link svg {
+        width: 18px;
+        height: 18px;
+      }
 
       /* ── Site footer ──────────────────────────────────────────── */
       .site-footer {
@@ -313,21 +366,41 @@ const canonical = ogUrl;
         text-decoration: none;
         transition: color 0.2s;
       }
-      .footer-links a:hover { color: #ffffff; text-decoration: none; }
-      .footer-links.secondary { font-size: 0.75rem; }
-      .footer-links.secondary a { color: rgba(245, 251, 250, 0.4); }
-      .footer-links.secondary a:hover { color: var(--muted); }
-      .footer-sep { color: rgba(245, 251, 250, 0.35); }
+      .footer-links a:hover {
+        color: #ffffff;
+        text-decoration: none;
+      }
+      .footer-links.secondary {
+        font-size: 0.75rem;
+      }
+      .footer-links.secondary a {
+        color: rgba(245, 251, 250, 0.4);
+      }
+      .footer-links.secondary a:hover {
+        color: var(--muted);
+      }
+      .footer-sep {
+        color: rgba(245, 251, 250, 0.35);
+      }
       .footer-logo {
         display: inline-block;
         opacity: 0.9;
         transition: opacity 0.2s;
       }
-      .footer-logo:hover { opacity: 1; }
-      .footer-logo img { width: 48px; height: 48px; display: block; }
-      .link-underline { position: relative; display: inline-block; }
+      .footer-logo:hover {
+        opacity: 1;
+      }
+      .footer-logo img {
+        width: 48px;
+        height: 48px;
+        display: block;
+      }
+      .link-underline {
+        position: relative;
+        display: inline-block;
+      }
       .link-underline::after {
-        content: "";
+        content: '';
         position: absolute;
         width: 0;
         height: 1px;
@@ -336,12 +409,20 @@ const canonical = ogUrl;
         background-color: currentColor;
         transition: width 250ms ease;
       }
-      .link-underline:hover::after { width: 100%; }
+      .link-underline:hover::after {
+        width: 100%;
+      }
 
       @media (max-width: 560px) {
-        .site-header { padding: 1.1rem 1.25rem; }
-        .brand-name { font-size: 1.2rem; }
-        .gh-link span { display: none; }
+        .site-header {
+          padding: 1.1rem 1.25rem;
+        }
+        .brand-name {
+          font-size: 1.2rem;
+        }
+        .gh-link span {
+          display: none;
+        }
       }
     </style>
   </body>

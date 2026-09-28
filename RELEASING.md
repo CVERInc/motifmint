@@ -22,13 +22,13 @@ no `exports`, no `files`** entry point. Consequences if you `npm publish` as-is:
 - The package has **no usable entry** — `require`/`import`/`npx` resolve to
   nothing. It would be an inert tarball of website source.
 - With no `files` allow-list and no `.npmignore`, npm falls back to
-  `.gitignore`, so the tarball ships **88 files / ~250 kB** of app internals:
-  every `src/lib/*.test.ts`, `vitest.config.ts`, `tsconfig.json`,
-  `Studio.svelte` (134 kB), Astro layouts, the `.github/` workflows, `HANDOFF.md`,
+  `.gitignore`, so the tarball ships **~90 files / ~250 kB** of app internals:
+  every `src/lib/*.test.ts` and `tests/`, `vitest.config.ts`, `tsconfig.json`,
+  `Studio.svelte` (134 kB), Astro layouts, the `.github/` workflows,
   `scripts/test.sh`, `hooks/pre-push`, and `public/cver-logo.png` (132 kB).
 
 **Therefore: do NOT publish the current 0.1.0 as-is.** First decide what
-`@cver/motifmint` *is* on npm (see "Before first publish" below). This doc is
+`@cver/motifmint` _is_ on npm (see "Before first publish" below). This doc is
 ready to drive the publish the moment that's settled.
 
 Captured `npm pack --dry-run` baseline (run this repo, working tree clean on
@@ -49,7 +49,7 @@ total files:   88
 Pick the intended shape and wire it up (engineering work, not part of "publish"):
 
 1. **Decide the artifact.** Per the roadmap it's a **CLI** (`npx @cver/motifmint
-   input.png > out.svg` + zip-in/zip-out batch). That needs a Node trace target
+input.png > out.svg` + zip-in/zip-out batch). That needs a Node trace target
    (the studio traces via `wasm_vtracer` in a browser Web Worker — a Node entry
    has to be built/verified to run headless).
 2. **Add the entry point** to `package.json`:
@@ -62,7 +62,7 @@ Pick the intended shape and wire it up (engineering work, not part of "publish")
    ```
    This is the single most important hygiene fix — it stops the 88-file
    source/test dump. (A `.npmignore` is the inverse approach; prefer `files`.)
-4. **Re-run `npm pack --dry-run`** and confirm the file list is *only* the
+4. **Re-run `npm pack --dry-run`** and confirm the file list is _only_ the
    intended artifact + docs, and the size is sane.
 5. **Smoke-test the tarball locally** before any publish:
    ```bash
@@ -76,16 +76,17 @@ Pick the intended shape and wire it up (engineering work, not part of "publish")
 
 ## Prepublish checklist (every release)
 
-Run on a clean `main`, in a **real terminal on Node 22** (`eval "$(fnm env)";
-fnm use 22`). Note: `astro check`/`astro build` **hang in the agent sandbox** —
-verify build on a real machine or via CI, never in-sandbox.
+Run on a clean `main`, on **Node 22** (`eval "$(fnm env)"; fnm use 22`).
+`bash scripts/test.sh` runs check, test and build in one go. If `astro check` /
+`astro build` stall in a restricted sandbox, re-run them in a regular terminal
+or rely on CI — do not skip them.
 
 - [ ] Working tree clean, on `main`, up to date with `origin/main`.
 - [ ] Entry point exists (`bin`/`main`/`exports`) and the built file is present.
 - [ ] `files` allow-list present and correct (no tests/configs/source dump).
 - [ ] `npm run check` — green (or via CI).
-- [ ] `npm test` — green (Vitest, the in-session-safe suite).
-- [ ] `npm run build` — green (real terminal / CI only).
+- [ ] `npm test` — green (Vitest).
+- [ ] `npm run build` — green.
 - [ ] `version` in `package.json` bumped per semver; matches the intended tag.
 - [ ] `npm pack --dry-run` reviewed — file list = artifact + docs only; size sane.
 - [ ] Tarball smoke-tested (`npm pack` → install the `.tgz` → run the entry).
@@ -114,7 +115,7 @@ npm publish --access public
 ### Notes
 
 - **`--access public` is required**: `@cver/...` is a **scoped** package and
-  npm defaults scoped packages to *restricted* (private). Omitting the flag on a
+  npm defaults scoped packages to _restricted_ (private). Omitting the flag on a
   first publish errors or, worse, would attempt a private publish.
 - **`latest` dist-tag** is implied. For a pre-release, publish under a tag
   instead, e.g. `npm publish --access public --tag next`, and never let an

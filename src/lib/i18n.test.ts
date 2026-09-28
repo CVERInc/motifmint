@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  detectLocale,
-  isLocale,
-  LOCALES,
-  TRANSLATIONS,
-  translate,
-  type MessageKey,
-} from './i18n';
+import { detectLocale, isLocale, LOCALES, TRANSLATIONS, translate, type MessageKey } from './i18n';
 
 describe('TRANSLATIONS completeness', () => {
   const enKeys = Object.keys(TRANSLATIONS['en-US']) as MessageKey[];
@@ -50,8 +43,9 @@ describe('translate', () => {
 
   it('substitutes {placeholder} params', () => {
     // No param key ships today, so test the substitution mechanism directly.
-    const out = 'Recolor {n} of {color}'.replace(/\{(\w+)\}/g, (_m, k) =>
-      ({ n: '3', color: 'red' } as Record<string, string>)[k],
+    const out = 'Recolor {n} of {color}'.replace(
+      /\{(\w+)\}/g,
+      (_m, k) => (({ n: '3', color: 'red' }) as Record<string, string>)[k],
     );
     expect(out).toBe('Recolor 3 of red');
   });

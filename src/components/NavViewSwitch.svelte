@@ -9,15 +9,15 @@
       role="tab"
       aria-selected={$previewView === 'svg'}
       class:on={$previewView === 'svg'}
-      onclick={() => previewView.set('svg')}
-    >SVG</button>
+      onclick={() => previewView.set('svg')}>SVG</button
+    >
     <button
       type="button"
       role="tab"
       aria-selected={$previewView === 'ascii'}
       class:on={$previewView === 'ascii'}
-      onclick={() => previewView.set('ascii')}
-    >ASCII</button>
+      onclick={() => previewView.set('ascii')}>ASCII</button
+    >
   </div>
 {/if}
 
@@ -43,7 +43,9 @@
     font-weight: 700;
     letter-spacing: 0.02em;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition:
+      background 0.15s,
+      color 0.15s;
   }
   .nav-switch button:hover {
     color: var(--text);

@@ -36,8 +36,10 @@ export const EFFECT_FILTER_ID = 'mm-fx';
 export function hasEffects(o: EffectOptions): boolean {
   return Boolean(
     (o.outline && o.outline.width > 0) ||
-      (o.shadow && o.shadow.opacity > 0 && (o.shadow.blur > 0 || o.shadow.dx !== 0 || o.shadow.dy !== 0)) ||
-      (o.glow && o.glow.opacity > 0 && o.glow.blur > 0),
+    (o.shadow &&
+      o.shadow.opacity > 0 &&
+      (o.shadow.blur > 0 || o.shadow.dx !== 0 || o.shadow.dy !== 0)) ||
+    (o.glow && o.glow.opacity > 0 && o.glow.blur > 0),
   );
 }
 

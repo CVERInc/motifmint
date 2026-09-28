@@ -2,7 +2,8 @@
  * Integration tests: chain the real lib functions exactly as the studio's
  * buildFinalSvg() / displaySvg do, to prove the features compose correctly.
  * (DOM-only steps — removePaths, canvas rasterize — are excluded; they have
- * their own no-DOM guards and run in CI's build / the maintainer's click-test.)
+ * their own no-DOM guards. CI does not execute them — `astro build` only
+ * bundles them — so they are covered only by the maintainer's click-test.)
  */
 import { describe, expect, it } from 'vitest';
 import { injectOrigIdx } from './punch-hole';
@@ -78,7 +79,7 @@ describe('full export pipeline (recolor → gradient → effects → backdrop)',
     // viewBox expanded for padding (square 100 + 5% padding each side)
     expect(final).toContain('viewBox="-5 -5 110 110"');
     // still a single well-formed root svg
-    expect((final.match(/<svg\b/g) ?? [])).toHaveLength(1);
+    expect(final.match(/<svg\b/g) ?? []).toHaveLength(1);
     expect(final.trimEnd().endsWith('</svg>')).toBe(true);
   });
 
@@ -114,7 +115,7 @@ describe('multi-image compose then edit', () => {
     expect(out).toContain('fill="#123456"');
     expect(out).toContain('fill="#ff0000"'); // layer A untouched
     // both layers wrapped in transform groups
-    expect((out.match(/<g transform=/g) ?? [])).toHaveLength(2);
+    expect(out.match(/<g transform=/g) ?? []).toHaveLength(2);
   });
 });
 

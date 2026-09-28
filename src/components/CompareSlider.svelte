@@ -149,7 +149,7 @@
 <div
   class="compare"
   class:has-bg={!!bg}
-  class:square={square}
+  class:square
   style:--bg-color={bg ?? 'transparent'}
   style:--bg-radius={radius}
   style:--bg-padding={padding}
@@ -184,10 +184,7 @@
 
   <!-- Original side: wrapped with its own checker background so backdrop
        doesn't bleed through PNG transparency. Clipped from the RIGHT. -->
-  <div
-    class="original-side"
-    style="clip-path: inset(0 {100 - position}% 0 0);"
-  >
+  <div class="original-side" style="clip-path: inset(0 {100 - position}% 0 0);">
     <img class="original-img" src={originalUrl} alt="" draggable="false" />
   </div>
 
@@ -213,7 +210,14 @@
   >
     <div class="handle-line" style:opacity={position > 0 ? 1 : 0}></div>
     <div class="handle-knob">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+      <svg
+        viewBox="0 0 24 24"
+        width="16"
+        height="16"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
         <path d="m9 6-6 6 6 6" />
         <path d="m15 6 6 6-6 6" />
       </svg>
@@ -246,7 +250,11 @@
       linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
       linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
     background-size: 16px 16px;
-    background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+    background-position:
+      0 0,
+      0 8px,
+      8px -8px,
+      -8px 0;
     pointer-events: none;
   }
   .compare.has-bg .backdrop-bg {
@@ -305,10 +313,19 @@
       linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
       linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
       linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
-      linear-gradient(-45deg, transparent 75%, #f0f0f0 75%),
-      white;
-    background-size: 16px 16px, 16px 16px, 16px 16px, 16px 16px, auto;
-    background-position: 0 0, 0 8px, 8px -8px, -8px 0, 0 0;
+      linear-gradient(-45deg, transparent 75%, #f0f0f0 75%), white;
+    background-size:
+      16px 16px,
+      16px 16px,
+      16px 16px,
+      16px 16px,
+      auto;
+    background-position:
+      0 0,
+      0 8px,
+      8px -8px,
+      -8px 0,
+      0 0;
   }
   .original-img {
     display: block;
