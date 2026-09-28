@@ -20,22 +20,32 @@ Issues, pull requests, translations — all welcome.
 
 ### Local development
 
-Requires Node.js 18+.
+Requires Node.js 22 (see `.nvmrc`; CI runs the same version). Older Node
+releases are rejected by Astro at build time.
 
 ```bash
 git clone https://github.com/CVERInc/motifmint.git
 cd motifmint
 npm install
-npm run dev       # http://localhost:4321
+npm run dev       # http://localhost:4321/motifmint
 npm run check     # type-check
+npm test          # unit tests (Vitest)
 npm run build     # production build to dist/
+```
+
+`bash scripts/test.sh` runs the same steps as CI (check, test, build) in one go.
+To run it automatically before every `git push`, enable the tracked hook once:
+
+```bash
+git config core.hooksPath hooks
 ```
 
 ### Code style
 
 - TypeScript strict mode (extends `astro/tsconfigs/strict`)
 - Indentation: 2 spaces, semicolons, single quotes
-- Run `npm run format` (Prettier) before submitting a PR
+- Run `npm run format` (Prettier) before submitting a PR — CI fails on
+  unformatted files (`npm run format:check`)
 - Constants: `UPPER_SNAKE_CASE`
 - Files: `kebab-case.ts` for libs, `PascalCase.svelte` for components
 - No emojis in UI strings — use Lucide icons instead
@@ -62,17 +72,17 @@ Steps to add a `comic` preset:
 
 ### Adding a new language
 
-The UI strings currently live inline in `Studio.svelte` and
-`index.astro`. Before adding new languages we will extract them into a JSON
-dictionary under `src/i18n/` (see Roadmap). Until then:
+Translations live in [`src/lib/i18n.ts`](src/lib/i18n.ts): `LOCALES` lists the
+supported BCP-47 tags (`en-US`, `ja-JP`, `zh-TW`, `es-ES`) and each locale has a
+flat dictionary of dotted keys (e.g. `hero.tagline`). They are used by
+`Hero.svelte` and `LanguageSwitcher.svelte`; the studio UI (`Studio.svelte`) is
+still English-only (see Roadmap in the README).
 
 1. Discuss the language addition in an Issue first.
-2. PR: factor out the strings into `src/i18n/<locale>.json` (BCP-47, e.g.
-   `ja-JP`, `zh-TW`).
-3. Wire up a language switcher in the header.
-
-The keys should be flat `SCREAMING_SNAKE_CASE`, matching the CVER house
-convention.
+2. Add the tag to `LOCALES` and `LOCALE_LABELS`, and add a dictionary with
+   every key the English one has.
+3. Run `npm run check` and `npm test` — the type check and `i18n.test.ts` flag
+   missing keys.
 
 ### Pull request etiquette
 
@@ -103,22 +113,32 @@ Do **not** open a public issue for security reports. See
 
 ### ローカル開発
 
-Node.js 18+ が必要です。
+Node.js 22 が必要です（`.nvmrc` 参照、CI も同じバージョン）。それより古い
+Node はビルド時に Astro に拒否されます。
 
 ```bash
 git clone https://github.com/CVERInc/motifmint.git
 cd motifmint
 npm install
-npm run dev       # http://localhost:4321
+npm run dev       # http://localhost:4321/motifmint
 npm run check     # 型チェック
+npm test          # ユニットテスト (Vitest)
 npm run build     # 本番ビルド (dist/)
+```
+
+`bash scripts/test.sh` で CI と同じ手順（check・test・build）をまとめて実行できます。
+`git push` の前に自動で走らせるには、追跡済みの hook を一度だけ有効化してください：
+
+```bash
+git config core.hooksPath hooks
 ```
 
 ### コードスタイル
 
 - TypeScript strict モード（`astro/tsconfigs/strict` を継承）
 - インデント 2 スペース、セミコロン必須、シングルクォート
-- PR 前に `npm run format`（Prettier）を実行
+- PR 前に `npm run format`（Prettier）を実行 — 未整形のファイルがあると CI が
+  失敗します（`npm run format:check`）
 - 定数: `UPPER_SNAKE_CASE`
 - ファイル: ライブラリは `kebab-case.ts`、コンポーネントは `PascalCase.svelte`
 - UI 文字列で emoji は使わない — Lucide icon を使うこと
@@ -145,17 +165,17 @@ npm run build     # 本番ビルド (dist/)
 
 ### 新言語の追加
 
-UI 文字列は現在 `Studio.svelte` と `index.astro` に直書きされています。
-新言語追加の前に、文字列を `src/i18n/` 配下の JSON 辞書に抽出する予定です
-（Roadmap 参照）。それまでの流れ：
+翻訳は [`src/lib/i18n.ts`](src/lib/i18n.ts) にあります。`LOCALES` に対応する
+BCP-47 タグ（`en-US`, `ja-JP`, `zh-TW`, `es-ES`）が並び、各ロケールはドット区切り
+キー（例: `hero.tagline`）のフラットな辞書です。`Hero.svelte` と
+`LanguageSwitcher.svelte` が使用しており、スタジオ UI（`Studio.svelte`）はまだ
+英語のみです（README の Roadmap 参照）。
 
 1. 言語追加について事前に Issue で議論。
-2. PR で文字列を `src/i18n/<locale>.json` に抽出（BCP-47、例: `ja-JP`,
-   `zh-TW`）。
-3. ヘッダーに言語切り替え UI を追加。
-
-キーは flat `SCREAMING_SNAKE_CASE` で、CVER のハウスコンベンションに揃え
-てください。
+2. `LOCALES` と `LOCALE_LABELS` にタグを追加し、英語辞書と同じキーをすべて
+   持つ辞書を追加。
+3. `npm run check` と `npm test` を実行 — 型チェックと `i18n.test.ts` が
+   キーの欠落を検出します。
 
 ### PR の心得
 

@@ -81,7 +81,7 @@ Open [`https://oss.cver.net/motifmint/`](https://oss.cver.net/motifmint/) and dr
 git clone https://github.com/CVERInc/motifmint.git
 cd motifmint
 npm install
-npm run dev        # http://localhost:4321
+npm run dev        # http://localhost:4321/motifmint
 npm test           # unit tests (Vitest)
 npm run build      # static output in dist/
 ```
@@ -113,17 +113,23 @@ motifmint/
 │  ├─ components/
 │  │  ├─ Studio.svelte        # the studio UI (trace, edit, export)
 │  │  ├─ CompareSlider.svelte # before/after slider
-│  │  └─ Hero.svelte          # title + language switcher
+│  │  ├─ AsciiCompare.svelte  # ASCII-art view
+│  │  ├─ NavViewSwitch.svelte # studio / ASCII view toggle
+│  │  ├─ Hero.svelte          # title + language switcher
+│  │  └─ LanguageSwitcher.svelte
 │  ├─ lib/
-│  │  ├─ trace.ts / .worker.ts      # wasm wrapper + worker
-│  │  ├─ presets.ts                 # logo / sketch / photo / pixel-art
-│  │  ├─ recolor.ts · path-state.ts · gradient.ts  # edit pipeline
-│  │  ├─ punch-hole.ts · strip-artifact.ts · backdrop.ts
-│  │  ├─ icon-pack.ts · ico.ts      # favicon / app-icon pack
+│  │  ├─ trace.ts · trace.worker.ts # wasm wrapper + worker
+│  │  ├─ presets.ts · custom-presets.ts  # logo / sketch / photo / pixel-art
+│  │  ├─ path-state.ts · color.ts · gradient.ts · gradient-presets.ts  # edit pipeline
+│  │  ├─ compose-layers.ts · effects.ts · history.ts · view-store.ts
+│  │  ├─ punch-hole.ts · strip-artifact.ts · backdrop.ts · background.ts
+│  │  ├─ icon-pack.ts · ico.ts · export-set.ts · svg-raster.ts  # exports
+│  │  ├─ ascii.ts · ascii-stroke-dom.ts  # ASCII art
 │  │  ├─ i18n.ts · i18n-store.ts    # en / ja / zh-TW / es
-│  │  └─ svgo.ts · format.ts · decode.ts
+│  │  └─ svgo.ts · format.ts · decode.ts · copy-as.ts
 │  ├─ layouts/Layout.astro
 │  └─ pages/index.astro
+├─ tests/                     # repo-level checks (docs vs. config)
 ├─ astro.config.mjs
 └─ package.json
 ```

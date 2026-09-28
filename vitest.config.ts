@@ -13,6 +13,6 @@ export default defineConfig({
     // decode) are intentionally not unit-tested here — they run in CI's real
     // build and the maintainer's click-test.
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
   },
 });

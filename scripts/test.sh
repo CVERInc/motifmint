@@ -3,8 +3,8 @@
 # pre-push hook and CI can never disagree. Exits non-zero on the first failure.
 # (Mirrors .github/workflows/ci.yml: install · check · test · build.)
 #
-# ⚠️ `astro check` / `astro build` HANG at 0% CPU in the agent sandbox (any Node).
-#    Run this on a real terminal (Node 22). The pure unit tests (vitest) run anywhere.
+# Needs Node 22 (see .nvmrc). If `astro check` / `astro build` stall in a restricted
+# sandbox, re-run this in a regular terminal instead of skipping those steps.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

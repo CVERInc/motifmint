@@ -22,6 +22,9 @@
     "wasm",
     "image-tracing"
   ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
@@ -35,7 +38,7 @@
     "@astrojs/svelte": "^7.0.0",
     "@lucide/svelte": "^1.16.0",
     "astro": "^5.0.0",
-    "bleedblend": "latest",
+    "bleedblend": "^2.2.2",
     "fflate": "^0.8.3",
     "svelte": "^5.0.0",
     "svgo": "^3.3.2",
